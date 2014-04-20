@@ -1,32 +1,29 @@
-package main
+package worker
 
 // Common data structures for the worker nodes
 import "encoding/json"
-import "fmt"
 
 type Tuple struct {
-  slice []string
+  Slice []string
 }
 
 func MakeTuple(length int) *Tuple {
   tuple := &Tuple{}
-  tuple.slice = make([]string, length)
+  tuple.Slice = make([]string, length)
   return tuple
 }
 
-func SerializeTuple(tuple *Tuple) []byte {
-  bytes, err := json.Marshal(tuple.slice)
+func (tuple *Tuple) Serialize() []byte {
+  bytes, err := json.Marshal(tuple.Slice)
   if err != nil {
     panic(err.Error())
   }
   return bytes
 }
 
-func DeserializeTuple(input []byte) *Tuple {
-  tuple := MakeTuple(0)
-  err := json.Unmarshal(input, &tuple.slice)
+func (tuple *Tuple) Deserialize(input []byte) {
+  err := json.Unmarshal(input, &tuple.Slice)
   if err != nil {
     panic(err.Error())
   }
-  return tuple
 }
