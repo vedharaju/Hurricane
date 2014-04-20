@@ -8,8 +8,7 @@ func TestSerializeDeserialize(t *testing.T) {
   tuple1.Slice[0] = "MOO"
   tuple1.Slice[1] = "abc"
 
-  tuple2 := MakeTuple(0)
-  tuple2.Deserialize(tuple1.Serialize())
+  tuple2 := DeserializeTuple(tuple1.SerializeTuple())
 
   if !reflect.DeepEqual(tuple1, tuple2) {
     t.Errorf("Failure %s != %s", tuple1, tuple2)
