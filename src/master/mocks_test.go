@@ -2,7 +2,6 @@ package master
 
 import (
   "testing"
-  "fmt"
 )
 
 func TestMocks(t *testing.T) {
