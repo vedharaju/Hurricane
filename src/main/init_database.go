@@ -1,8 +1,8 @@
 package main
 
 import (
-  "master"
-  "fmt"
+	"fmt"
+	"master"
 )
 
 /* Reset and initalize the master database tables. Note that this
@@ -13,8 +13,8 @@ import (
  *
  */
 func main() {
-  hd := master.GetDbConnection()
-  master.ResetDb(hd)
-  master.CreateTables(hd)
-  fmt.Println("Success")
+	hd := master.GetDbConnection()
+	master.ResetDb(hd)
+	master.CreateTables(hd)
+	fmt.Println("Success")
 }
