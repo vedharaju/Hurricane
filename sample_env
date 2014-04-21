@@ -1,0 +1,14 @@
+# Sample environment variables for our project.
+#
+# Installation:
+#
+#   cp ./sample_env ./env.local
+#   # make modifications to the environment
+#   source ./env.local
+#
+# Check the current environment:
+#
+#   env
+#
+PQ_CONN="user=hogbait dbname=hurricanedev host=/var/run/postgresql/ sslmode=disable"
+GO_PATH=$PWD
