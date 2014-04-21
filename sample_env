@@ -11,4 +11,5 @@
 #   env
 #
 export PQ_CONN="user=hogbait dbname=hurricanedev host=/var/run/postgresql/ sslmode=disable"
+export PQ_CONN_TEST="user=hogbait dbname=hurricanetest host=/var/run/postgresql/ sslmode=disable"
 export GOPATH=$PWD
