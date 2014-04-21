@@ -1,15 +1,15 @@
 package master
 
 import (
-    "testing"
+	"testing"
 )
 
 func TestGetDbConnection(t *testing.T) {
-  GetDbConnection()
+	GetDbConnection()
 }
 
 func TestCreateTables(t *testing.T) {
-  hd := GetTestDbConnection()
-  ResetDb(hd)
-  CreateTables(hd)
+	hd := GetTestDbConnection()
+	ResetDb(hd)
+	CreateTables(hd)
 }

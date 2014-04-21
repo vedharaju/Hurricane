@@ -1,12 +1,12 @@
 package master
 
 import (
-  "testing"
+	"testing"
 )
 
 func TestMocks(t *testing.T) {
-  hd := GetTestDbConnection()
-  ResetDb(hd)
-  CreateTables(hd)
-  MockDiamondWorkflow(hd)
+	hd := GetTestDbConnection()
+	ResetDb(hd)
+	CreateTables(hd)
+	MockDiamondWorkflow(hd)
 }

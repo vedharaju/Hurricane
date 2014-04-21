@@ -17,8 +17,8 @@ func cleanup(hd *hood.Hood) {
 
 func TestBasic(t *testing.T) {
 	hd := GetTestDbConnection()
-  setup(hd)
-  defer cleanup(hd)
+	setup(hd)
+	defer cleanup(hd)
 
 	fmt.Printf("Test: Basic RDD has segments ...\n")
 
@@ -28,13 +28,13 @@ func TestBasic(t *testing.T) {
 	rdd := MockRdd(hd, workflowBatch, protojob)
 	worker := MockWorker(hd)
 	MockSegment(hd, rdd, worker)
-  MockSegment(hd, rdd, worker)
+	MockSegment(hd, rdd, worker)
 
-  results := rdd.getSegments(hd)
+	results := rdd.getSegments(hd)
 
-  if len(results) != 2 {
-    t.Fatalf("incorrect number of segments; wanted=%d got=%d", len(results), 2)
-  }
+	if len(results) != 2 {
+		t.Fatalf("incorrect number of segments; wanted=%d got=%d", len(results), 2)
+	}
 
 	fmt.Printf("  ... Passed\n")
 
