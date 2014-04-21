@@ -45,7 +45,7 @@ type Segment struct {
 	RddId int64
 
 	// Reference to the worker where this task is executing
-	WorkerID int64
+	WorkerId int64
 
 	// These fields are auto updated on save
 	Created hood.Created
@@ -55,9 +55,6 @@ type Segment struct {
 type Workflow struct {
 	// Auto-incrementing int field 'id'
 	Id hood.Id
-
-  // Reference to the source Protojob in the workflow DAG
-  SourceJob int64
 
 	// These fields are auto updated on save
 	Created hood.Created
@@ -69,7 +66,7 @@ type WorkflowEdge struct {
 	Id hood.Id
 
   // References into Protojob table
-  SrcJobId int64
+  SourceJobId int64
   DestJobId int64
 
 	// These fields are auto updated on save
@@ -81,10 +78,11 @@ type Protojob struct {
 	// Auto-incrementing int field 'id'
 	Id hood.Id
 
+  // Reference to the workflow
   WorkflowId int64
 
 	// Name of the command, UDF or built-in
-	Name string
+	Command string
 
 	// These fields are auto updated on save
 	Created hood.Created
@@ -109,7 +107,7 @@ type WorkflowBatch struct {
 	Updated hood.Updated
 }
 
-type WorkerNode struct {
+type Worker struct {
 	// Auto-incrementing int field 'id'
 	Id hood.Id
 

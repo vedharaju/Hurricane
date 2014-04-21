@@ -2,8 +2,8 @@ package master
 
 
 import (
-    hood "github.com/eaigner/hood"
-    "os"
+  "github.com/eaigner/hood"
+  "os"
 )
 
 /* Create a db connection based on a configuration string */
@@ -42,13 +42,13 @@ func CreateTables(hd *hood.Hood) {
   // List all table names here
   tables := []interface{}{
     &Rdd{}, &Segment{}, &RddEdge{}, &Workflow{}, &WorkflowEdge{},
-    &Protojob{}, &WorkflowBatch{}, &WorkerNode{},
+    &Protojob{}, &WorkflowBatch{}, &Worker{},
   }
 
   for _, table := range tables {
     err := tx.CreateTable(table)
     if err != nil {
-        panic(err)
+      panic(err)
     }
   }
 
