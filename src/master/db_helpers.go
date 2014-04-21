@@ -41,6 +41,8 @@ func CreateTables(hd *hood.Hood) {
 
   // List all table names here
   tables := []interface{}{
+    &Rdd{}, &Segment{}, &RddEdge{}, &Workflow{}, &WorkflowEdge{},
+    &Protojob{}, &WorkflowBatch{}, &WorkerNode{},
   }
 
   for _, table := range tables {
