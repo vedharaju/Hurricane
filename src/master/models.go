@@ -108,8 +108,8 @@ type WorkflowBatch struct {
 	// Start time of the batch
 	StartTime time.Time
 
-	// Duration of the batch
-	Duration time.Time
+	// Duration of the batch (must be cast to time.Duration)
+	Duration int64
 
 	// These fields are auto updated on save
 	Created hood.Created
