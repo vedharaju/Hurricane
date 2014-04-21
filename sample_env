@@ -10,5 +10,5 @@
 #
 #   env
 #
-PQ_CONN="user=hogbait dbname=hurricanedev host=/var/run/postgresql/ sslmode=disable"
-GO_PATH=$PWD
+export PQ_CONN="user=hogbait dbname=hurricanedev host=/var/run/postgresql/ sslmode=disable"
+export GOPATH=$PWD
