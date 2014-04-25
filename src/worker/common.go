@@ -3,6 +3,8 @@ package worker
 // Common data structures for the worker nodes
 import "encoding/json"
 import "io"
+import "bytes"
+import "hash/fnv"
 
 type Tuple struct {
 	Slice []string
@@ -66,12 +68,34 @@ func ReadTupleStream(reader io.Reader, callback TupleFunc) {
 	}
 }
 
-type Segment struct {
-	Tuples []Tuple
+func TupleToPartition(tuple Tuple, indices []int, parts int) int {
+	var buffer bytes.Buffer
+
+	for _, i := range indices {
+		buffer.WriteString(tuple.Slice[i])
+	}
+
+	h := fnv.New32()
+	io.WriteString(h, buffer.String())
+	return int(h.Sum32()) % parts
 }
 
-func MakeSegment(tuples []Tuple) Segment {
+type Segment struct {
+	Partitions [][]Tuple
+}
+
+func MakeSegment(tuples []Tuple, indices []int, parts int) Segment {
 	var segment Segment
-	segment.Tuples = tuples
+	segment.Partitions = make([][]Tuple, parts)
+
+	for i, _ := range segment.Partitions {
+		segment.Partitions[i] = make([]Tuple, 0)
+	}
+
+	// partition the tuples based on the specified indices
+	for _, tuple := range tuples {
+		partition := TupleToPartition(tuple, indices, parts)
+		segment.Partitions[partition] = append(segment.Partitions[partition], tuple)
+	}
 	return segment
 }

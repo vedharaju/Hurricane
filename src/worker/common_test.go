@@ -49,26 +49,65 @@ func TestReadTupleStream(t *testing.T) {
 }
 
 func TestBasicSegment(t *testing.T) {
+	//TODO: write better test
+
 	fmt.Printf("Test: Basic Segment has tuples ...\n")
+
+	//IMPORANT: for this test make sure values only repeat in same index
+	// ie. tuple1.Slice[0] = "MOO"
+	//     tuple1.Slice[1] = "MOO" is not good
 
 	tuple1 := MakeTuple(2)
 	tuple1.Slice[0] = "MOO"
 	tuple1.Slice[1] = "abc"
 
 	tuple2 := MakeTuple(2)
-	tuple2.Slice[0] = "OINK"
+	tuple2.Slice[0] = "WOOF"
 	tuple2.Slice[1] = "cde"
 
-	tuples := []Tuple{tuple1, tuple2}
+	tuple3 := MakeTuple(2)
+	tuple3.Slice[0] = "WOOF"
+	tuple3.Slice[1] = "abc"
 
-	segment := MakeSegment(tuples)
+	tuple4 := MakeTuple(2)
+	tuple4.Slice[0] = "MEOW"
+	tuple4.Slice[1] = "cde"
 
-	for i, tuple := range segment.Tuples {
-		if tuple.Slice[0] != tuples[i].Slice[0] {
-			t.Errorf("Failure %s != %s", tuple.Slice[0], tuples[i].Slice[0])
+	tuples := []Tuple{tuple1, tuple2, tuple3, tuple4}
+
+	counts := make(map[string]int)
+	for _, tuple := range tuples {
+		for _, v := range tuple.Slice {
+			if count, ok := counts[v]; ok {
+				counts[v] = count + 1
+			} else {
+				counts[v] = 1
+			}
 		}
-		if tuple.Slice[1] != tuples[i].Slice[1] {
-			t.Errorf("Failure %s != %s", tuple.Slice[1], tuples[i].Slice[1])
+	}
+
+	indices := make([]int, 1)
+	indices[0] = 0
+	segment := MakeSegment(tuples, indices, 2)
+
+	fmt.Printf("Checking that partitioning is correct ...\n")
+
+	for _, partition := range segment.Partitions {
+		partition_counts := make(map[string]int)
+
+		for _, tuple := range partition {
+			v := tuple.Slice[0]
+			if count, ok := partition_counts[v]; ok {
+				partition_counts[v] = count + 1
+			} else {
+				partition_counts[v] = 1
+			}
+		}
+
+		for k, v := range partition_counts {
+			if counts[k] != v {
+				t.Errorf("Failure Partition Incorrect\n")
+			}
 		}
 	}
 
