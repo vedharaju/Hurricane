@@ -28,30 +28,15 @@ func cleanup(ma []*Master) {
 func TestBasicPing(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
-	const nservers = 1
-	var ma []*Master = make([]*Master, nservers)
-	var mh []string = make([]string, nservers)
-	defer cleanup(ma)
+	masterhost := port("master", 1)
+  StartServer(masterhost)
 
-	for i := 0; i < nservers; i++ {
-		mh[i] = port("basic", i)
-	}
-	for i := 0; i < nservers; i++ {
-		ma[i] = StartServer(mh[i])
+	workerhost := port("worker", 2)
+  worker := MakeClerk(workerhost, masterhost)
+
+	if ok := worker.Ping(); !ok {
+		t.Fatalf("Could not ping master")
 	}
 
-	ck := MakeClerk(mh)
-	var cka [nservers]*Clerk
-	for i := 0; i < nservers; i++ {
-		cka[i] = MakeClerk([]string{mh[i]})
-	}
-
-	fmt.Printf("Test: Basic ping ...\n")
-
-	ok := ck.Ping(mh[0])
-	if !ok {
-		t.Fatalf("Ping failure")
-	}
-
-	fmt.Printf("  ... Passed\n")
+  fmt.Printf("  ... Passed\n")
 }

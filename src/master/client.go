@@ -6,10 +6,17 @@ import "sync"
 
 type Clerk struct {
 	mu sync.Mutex
+
+	// (host:port) information
+	master string
+	me string
 }
 
-func MakeClerk(servers []string) *Clerk {
+func MakeClerk(me string, master string) *Clerk {
 	ck := new(Clerk)
+
+	ck.master = master
+	ck.me = me
 
 	return ck
 }
@@ -45,10 +52,10 @@ func call(srv string, rpcname string, args interface{}, reply interface{}) bool 
 	return false
 }
 
-func (ck *Clerk) Ping(server string) bool {
-	args := PingArgs{}
+func (ck *Clerk) Ping() bool {
+	args := PingArgs{Me: ck.me}
 	reply := PingReply{}
-	ok := call(server, "Master.Ping", args, &reply)
+	ok := call(ck.master, "Master.Ping", args, &reply)
 	if ok && reply.Err == OK {
 		return true
 	}
