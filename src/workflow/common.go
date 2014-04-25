@@ -54,7 +54,7 @@ func parse(r *regexp.Regexp, line string, n int) []string {
 	return r.Split(line, n)
 }
 
-func readWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error) {
+func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error) {
 	mode := NONE
 	scanner := bufio.NewScanner(inputReader)
 

@@ -123,3 +123,20 @@ func (workflowBatch *WorkflowBatch) GetRdds(tx *hood.Hood) []*Rdd {
 
 	return pointerResults
 }
+
+func GetWorkflows(tx *hood.Hood) []*Workflow {
+	var results []Workflow
+	err := tx.Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Workflow, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
