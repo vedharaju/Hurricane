@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eaigner/hood"
+	"io"
 	"log"
 	"master"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -54,10 +54,9 @@ func parse(r *regexp.Regexp, line string, n int) []string {
 	return r.Split(line, n)
 }
 
-func readWorkflow(hd *hood.Hood, filepath string) (*master.Workflow, error) {
+func readWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error) {
 	mode := NONE
-	file, _ := os.Open(filepath)
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(inputReader)
 
 	r_job, _ := regexp.Compile("JOBS.*")
 	r_workflow, _ := regexp.Compile("WORKFLOW.*")
@@ -125,7 +124,7 @@ func readWorkflow(hd *hood.Hood, filepath string) (*master.Workflow, error) {
 	return workflow, nil
 }
 
-func workflowToString(hd *hood.Hood, w *master.Workflow) string {
+func WorkflowToString(hd *hood.Hood, w *master.Workflow) string {
 	jobs := w.GetProtojobs(hd)
 	edges := w.GetWorkflowEdges(hd)
 
