@@ -3,6 +3,7 @@ package master
 import "net/rpc"
 import "fmt"
 import "sync"
+import "time"
 
 type Clerk struct {
 	mu sync.Mutex
@@ -10,6 +11,7 @@ type Clerk struct {
 	// (host:port) information
 	master string
 	me     string
+	id     int64
 }
 
 func MakeClerk(me string, master string) *Clerk {
@@ -52,12 +54,56 @@ func call(srv string, rpcname string, args interface{}, reply interface{}) bool 
 	return false
 }
 
-func (ck *Clerk) Ping() bool {
-	args := PingArgs{Me: ck.me}
-	reply := PingReply{}
-	ok := call(ck.master, "Master.Ping", args, &reply)
-	if ok && reply.Err == OK {
-		return true
+// If retry=false, return NO_RESPONSE on failure
+func (ck *Clerk) Ping(retry bool) Err {
+	// id should be at least 1 if registration was successful
+	if ck.id <= 0 {
+		panic("Cannot ping before registering")
 	}
-	return false
+
+	to := 10 * time.Millisecond
+	for {
+		args := PingArgs{Id: ck.id}
+		reply := PingReply{}
+		ok := call(ck.master, "Master.Ping", &args, &reply)
+		if ok {
+			// either OK or RESET
+			return reply.Err
+		}
+
+		if retry == false {
+			return NO_RESPONSE
+		}
+
+		// exponential backoff
+		time.Sleep(to)
+		if to < 10*time.Second {
+			to *= 2
+		}
+	}
+}
+
+// If retry=false, return 0 upon failure
+func (ck *Clerk) Register(retry bool) int64 {
+	to := 50 * time.Millisecond
+	for {
+		args := RegisterArgs{Me: ck.me}
+		reply := RegisterReply{}
+		ok := call(ck.master, "Master.Register", &args, &reply)
+
+		if ok && reply.Err == OK {
+			ck.id = reply.Id
+			return reply.Id
+		}
+
+		if retry == false {
+			return 0
+		}
+
+		// exponential backoff
+		time.Sleep(to)
+		if to < 10*time.Second {
+			to *= 2
+		}
+	}
 }

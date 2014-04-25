@@ -140,3 +140,51 @@ func GetWorkflows(tx *hood.Hood) []*Workflow {
 
 	return pointerResults
 }
+
+func GetWorkers(tx *hood.Hood) []*Worker {
+	var results []Worker
+	err := tx.Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Worker, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func GetWorkersAtAddress(tx *hood.Hood, address string) []*Worker {
+	var results []Worker
+	err := tx.Where("url", "=", address).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Worker, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func GetWorker(tx *hood.Hood, id int64) *Worker {
+	var results []Worker
+	err := tx.Where("id", "=", id).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		return nil
+	} else {
+		return &results[0]
+	}
+}

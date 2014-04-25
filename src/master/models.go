@@ -139,10 +139,11 @@ type Worker struct {
 	// Auto-incrementing int field 'id'
 	Id hood.Id
 
-	// URL or IP address of the worker node
+	// URL and port of the worker node
 	Url string
-	// TCP port of the worker's RPC handler
-	Port int
+
+	// false if the worker is alive
+	Dead bool
 
 	// These fields are auto updated on save
 	Created hood.Created

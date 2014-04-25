@@ -13,18 +13,28 @@ type Master struct {
 	mu sync.Mutex
 	l  net.Listener
 	me int
+	hd *hood.Hood
+}
 
-	// Map of workers to latest ping time
-	workers map[string]time.Time
+func commitOrPanic(tx *hood.Hood) {
+	err := tx.Commit()
+	if err != nil {
+		panic(err)
+	}
 }
 
 //
 // server Ping RPC handler.
 //
 func (m *Master) Ping(args *PingArgs, reply *PingReply) error {
-	m.workers[args.Me] = time.Now()
+	fmt.Println("Pinging", args.Id)
 
-	reply.Err = OK
+	w := GetWorker(m.hd, args.Id)
+	if w.Dead {
+		reply.Err = RESET
+	} else {
+		reply.Err = OK
+	}
 
 	return nil
 }
@@ -34,9 +44,21 @@ func (m *Master) Ping(args *PingArgs, reply *PingReply) error {
 //
 func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 	fmt.Println("Registering", args.Me)
-	m.workers[args.Me] = time.Now()
+
+	tx := m.hd.Begin()
+	existingWorkers := GetWorkersAtAddress(tx, args.Me)
+	for _, w := range existingWorkers {
+		w.Dead = true
+		tx.Save(w)
+	}
+	newWorker := Worker{
+		Url: args.Me,
+	}
+	tx.Save(&newWorker)
+	commitOrPanic(tx)
 
 	reply.Err = OK
+	reply.Id = int64(newWorker.Id)
 
 	return nil
 }
@@ -47,11 +69,6 @@ func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 //
 func (m *Master) tick() {
 	// Clean dead servers
-	for k, v := range m.workers {
-		if PingInterval*DeadPings < time.Since(v) {
-			delete(m.workers, k)
-		}
-	}
 }
 
 // tell the server to shut itself down.
@@ -67,7 +84,7 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 
 	master := new(Master)
 
-	master.workers = make(map[string]time.Time)
+	master.hd = hd
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(master)
@@ -81,11 +98,13 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 	master.l = l
 
 	go func() {
-		if conn, err := master.l.Accept(); err == nil {
-			go rpcs.ServeConn(conn)
-		} else {
-			fmt.Printf("Master() accept: %v\n", err.Error())
-			master.kill()
+		for {
+			if conn, err := master.l.Accept(); err == nil {
+				go rpcs.ServeConn(conn)
+			} else {
+				fmt.Printf("Master() accept: %v\n", err.Error())
+				master.kill()
+			}
 		}
 	}()
 

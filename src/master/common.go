@@ -3,7 +3,9 @@ package master
 import "time"
 
 const (
-	OK = "OK"
+	OK          = "OK"
+	RESET       = "RESET"
+	NO_RESPONSE = "NO_RESPONSE"
 
 	// workers should send a Ping RPC this often,
 	// to tell the master that the worker is alive.
@@ -21,11 +23,12 @@ type RegisterArgs struct {
 }
 
 type RegisterReply struct {
+	Id  int64
 	Err Err
 }
 
 type PingArgs struct {
-	Me string
+	Id int64
 }
 
 type PingReply struct {
