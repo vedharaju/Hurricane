@@ -10,10 +10,6 @@ type Tuple struct {
 
 type TupleFunc func(Tuple)
 
-type Segment struct {
-  Slice []Tuple
-}
-
 func MakeTuple(length int) Tuple {
   tuple := Tuple{}
   tuple.Slice = make([]string, length)
@@ -56,4 +52,14 @@ func ReadTupleStream(reader io.Reader, callback TupleFunc) {
     }
     line = append(line, buff[start:n]...)
   }
+}
+
+type Segment struct {
+  Tuples []Tuple
+}
+
+func MakeSegment(tuples []Tuple) Segment {
+  var segment Segment
+  segment.Tuples = tuples
+  return segment
 }
