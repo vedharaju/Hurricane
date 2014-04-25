@@ -14,7 +14,6 @@ func setup(hd *hood.Hood) {
 func TestBasic(t *testing.T) {
 	hd := GetTestDbConnection()
 	setup(hd)
-	defer cleanup_database(hd)
 
 	fmt.Printf("Test: Basic RDD has segments ...\n")
 
