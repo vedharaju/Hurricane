@@ -1,32 +1,45 @@
-package main
+package udf
 
 import (
-	"bytes"
-	"fmt"
 	"log"
 	"os/exec"
-        "io"
+	"strings"
+	"worker"
 )
 
-// Functions and data structures for spawning a subprocess as a UDF
+// Execute a UDF command that accepts zero or more input lists of tuples, and
+// returns one output list of tuples. This function blocks until the UDF is
+// done executing.
+func runUDF(command string, inputTuples ...[]worker.Tuple) []worker.Tuple {
+	// spawn the external process
+	splits := strings.Split(command, " ")
+	cmd := exec.Command(splits[0], splits[1:]...)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		log.Panic(err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Panic(err)
+	}
+	cmd.Start()
 
-func runUDF(command string, inputTuples string, args ...string) {
-  cmd := exec.Command(command, args...)
-  stdin, err := cmd.StdinPipe()
-  if err != nil {
-    log.Panic(err)
-  }
-  io.Copy(stdin, bytes.NewBufferString("Vedha"))
-  var out bytes.Buffer
-  cmd.Stdout = &out
-  err = cmd.Run()
-  if err != nil {
-    log.Fatal(err)
-  }
-  fmt.Printf(out.String())
-}
+	// write tuples to standard input on a background goroutine
+	go func() {
+		for index, tupleList := range inputTuples {
+			for _, tuple := range tupleList {
+				stdin.Write(tuple.SerializeTuple(index))
+				stdin.Write([]byte{'\n'})
+			}
+		}
+		stdin.Close()
+	}()
 
-func main() {
-  args := []string{"test.py"}
-  runUDF("python", "", args...)
+	// read from standard output to get the output tuples
+	outputTuples := make([]worker.Tuple, 0)
+	worker.ReadTupleStream(stdout, func(tuple worker.Tuple, index int) {
+		outputTuples = append(outputTuples, tuple)
+	})
+
+	return outputTuples
 }
