@@ -14,18 +14,18 @@ func TestMakeBatch(t *testing.T) {
 	wb := workflow.MakeBatch(hd, 50, 100)
 
 	// there should be two batches, because the diamond workflow started with one
-	wbs := workflow.getWorkflowBatches(hd)
+	wbs := workflow.GetWorkflowBatches(hd)
 	if len(wbs) != 2 {
 		t.Fatalf("incorrect number of workflow batches; got=%d wanted=%d", len(wbs), 2)
 	}
 
 	// check that the new batch has all of the rdds and edges
-	rdds := wb.getRdds(hd)
+	rdds := wb.GetRdds(hd)
 	if len(rdds) != 4 {
 		t.Fatalf("incorrect number of rdds; got=%d wanted=%d", len(wbs), 4)
 	}
 
-	rddes := wb.getRddEdges(hd)
+	rddes := wb.GetRddEdges(hd)
 	if len(rddes) != 4 {
 		t.Fatalf("incorrect number of rdd edges; got=%d wanted=%d", len(wbs), 4)
 	}

@@ -2,13 +2,14 @@ package workflow
 
 import (
 	"bufio"
-	"os"
-	//  "fmt"
 	"errors"
+	"fmt"
 	"github.com/eaigner/hood"
 	"log"
 	"master"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -26,7 +27,6 @@ func saveOrPanic(hd *hood.Hood, x interface{}) {
 }
 
 func makeProtoJob(hd *hood.Hood, workflow *master.Workflow, command string) *master.Protojob {
-	//fmt.Println("Command", command)
 	job := master.Protojob{
 		Command:    command,
 		WorkflowId: int64(workflow.Id),
@@ -54,11 +54,10 @@ func parse(r *regexp.Regexp, line string, n int) []string {
 	return r.Split(line, n)
 }
 
-func readWorkflow(hd *hood.Hood, filepath string) error {
+func readWorkflow(hd *hood.Hood, filepath string) (*master.Workflow, error) {
 	mode := NONE
 	file, _ := os.Open(filepath)
 	scanner := bufio.NewScanner(file)
-	//scanner := bufio.NewScanner(os.Stdin)
 
 	r_job, _ := regexp.Compile("JOBS.*")
 	r_workflow, _ := regexp.Compile("WORKFLOW.*")
@@ -83,14 +82,13 @@ func readWorkflow(hd *hood.Hood, filepath string) error {
 					if _, ok := jobIds[split[0]]; !ok {
 						job := makeProtoJob(hd, workflow, split[1])
 						jobIds[split[0]] = int64(job.Id)
-						//fmt.Println("Making job", split[0], job.Id)
 					} else {
-						return errors.New("jobs: Multiple jobs declared with the same name")
+						return nil, errors.New("jobs: Multiple jobs declared with the same name")
 					}
 
 				} else {
 					if len(split) != 1 || split[0] != "" {
-						return errors.New("workflow: Invalid syntax in job declaration ")
+						return nil, errors.New("workflow: Invalid syntax in job declaration ")
 					}
 				}
 			}
@@ -100,23 +98,21 @@ func readWorkflow(hd *hood.Hood, filepath string) error {
 			if len(split) >= 2 {
 				toId, ok := jobIds[split[1]]
 				if !ok {
-					return errors.New("jobs: Undefined job " + split[1])
+					return nil, errors.New("jobs: Undefined job " + split[1])
 				}
 
 				from := parse(r_comma, strings.TrimSpace(split[0]), -1)
 				for _, fromJob := range from {
 					fromId, ok := jobIds[fromJob]
 					if ok {
-						//fmt.Println("Making edge from ", fromJob, " to ", split[1], "Ids from ", fromId, " to ", toId)
 						makeWorkflowEdge(hd, fromId, toId)
 					} else {
-						return errors.New("jobs: Undefined job " + fromJob)
+						return nil, errors.New("jobs: Undefined job " + fromJob)
 					}
 				}
-				//to := parse(r_comma, strings.TrimSpace(split[1]), -1)
 			} else {
 				if len(split) != 1 || split[0] != "" {
-					return errors.New("workflow: Invalid syntax in job declaration ")
+					return nil, errors.New("workflow: Invalid syntax in job declaration ")
 				}
 			}
 		}
@@ -126,5 +122,30 @@ func readWorkflow(hd *hood.Hood, filepath string) error {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	return nil
+	return workflow, nil
+}
+
+func workflowToString(hd *hood.Hood, w *master.Workflow) string {
+	jobs := w.GetProtojobs(hd)
+	edges := w.GetWorkflowEdges(hd)
+
+	output := "JOBS\n\n"
+	for _, job := range jobs {
+		output += fmt.Sprintf("%v: %v\n", job.Id, job.Command)
+	}
+	output += "\nWORKFLOW\n\n"
+	inEdges := make(map[int64][]int64)
+	for _, edge := range edges {
+		inEdges[edge.DestJobId] = append(inEdges[edge.DestJobId], edge.SourceJobId)
+	}
+	for dest, srcs := range inEdges {
+		srcStrings := make([]string, len(srcs))
+		for i, src := range srcs {
+			srcStrings[i] = strconv.FormatInt(src, 10)
+		}
+		joined := strings.Join(srcStrings, ",")
+		output += fmt.Sprintf("%v: %v\n", joined, strconv.FormatInt(dest, 10))
+	}
+
+	return output
 }

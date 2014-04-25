@@ -18,7 +18,7 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int, duration int) *Wor
 
 	// Create rdd objects
 	pjToRdd := make(map[int64]int64)
-	for _, protojob := range workflow.getProtojobs(hd) {
+	for _, protojob := range workflow.GetProtojobs(hd) {
 		rdd := &Rdd{
 			WorkflowBatchId: int64(batch.Id),
 			ProtojobId:      int64(protojob.Id),
@@ -28,7 +28,7 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int, duration int) *Wor
 	}
 
 	// Create edges (TODO: also create edges for inter-batch dependencies)
-	for _, workflowEdge := range workflow.getWorkflowEdges(hd) {
+	for _, workflowEdge := range workflow.GetWorkflowEdges(hd) {
 		rddEdge := &RddEdge{
 			SourceRddId: pjToRdd[workflowEdge.SourceJobId],
 			DestRddId:   pjToRdd[workflowEdge.DestJobId],

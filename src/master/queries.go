@@ -4,7 +4,7 @@ import (
 	"github.com/eaigner/hood"
 )
 
-func (rdd *Rdd) getSegments(tx *hood.Hood) []*Segment {
+func (rdd *Rdd) GetSegments(tx *hood.Hood) []*Segment {
 	var results []Segment
 	err := tx.Where("rdd_id", "=", rdd.Id).Find(&results)
 	if err != nil {
@@ -21,7 +21,7 @@ func (rdd *Rdd) getSegments(tx *hood.Hood) []*Segment {
 	return pointerResults
 }
 
-func (workflow *Workflow) getProtojobs(tx *hood.Hood) []*Protojob {
+func (workflow *Workflow) GetProtojobs(tx *hood.Hood) []*Protojob {
 	var results []Protojob
 	err := tx.Where("workflow_id", "=", workflow.Id).Find(&results)
 	if err != nil {
@@ -40,7 +40,7 @@ func (workflow *Workflow) getProtojobs(tx *hood.Hood) []*Protojob {
 
 // Select all workflow edges whose dest_protojob is in the given
 // workflow (this also imlies that the source_protojob is in the workflow)
-func (workflow *Workflow) getWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
+func (workflow *Workflow) GetWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
 	var results []WorkflowEdge
 	err := tx.FindSql(&results,
 		`select *
@@ -65,7 +65,7 @@ func (workflow *Workflow) getWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
 // Get all Rdd edges whose source or dest Rdd is in the given workflow
 // batch. Note that the source and dest Rdds may be produced in different
 // batches.
-func (workflowBatch *WorkflowBatch) getRddEdges(tx *hood.Hood) []*RddEdge {
+func (workflowBatch *WorkflowBatch) GetRddEdges(tx *hood.Hood) []*RddEdge {
 	var results []RddEdge
 	err := tx.FindSql(&results,
 		`select *
@@ -90,7 +90,7 @@ func (workflowBatch *WorkflowBatch) getRddEdges(tx *hood.Hood) []*RddEdge {
 	return pointerResults
 }
 
-func (workflow *Workflow) getWorkflowBatches(tx *hood.Hood) []*WorkflowBatch {
+func (workflow *Workflow) GetWorkflowBatches(tx *hood.Hood) []*WorkflowBatch {
 	var results []WorkflowBatch
 	err := tx.Where("workflow_id", "=", workflow.Id).Find(&results)
 	if err != nil {
@@ -107,7 +107,7 @@ func (workflow *Workflow) getWorkflowBatches(tx *hood.Hood) []*WorkflowBatch {
 	return pointerResults
 }
 
-func (workflowBatch *WorkflowBatch) getRdds(tx *hood.Hood) []*Rdd {
+func (workflowBatch *WorkflowBatch) GetRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.Where("workflow_batch_id", "=", workflowBatch.Id).Find(&results)
 	if err != nil {

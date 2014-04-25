@@ -25,7 +25,7 @@ func TestBasic(t *testing.T) {
 	MockSegment(hd, rdd, worker)
 	MockSegment(hd, rdd, worker)
 
-	results := rdd.getSegments(hd)
+	results := rdd.GetSegments(hd)
 
 	if len(results) != 2 {
 		t.Fatalf("incorrect number of segments; got=%d wanted=%d", len(results), 2)
@@ -44,30 +44,30 @@ func TestComplex(t *testing.T) {
 	workflow := MockDiamondWorkflow(hd)
 
 	// test protojobs
-	pjs := workflow.getProtojobs(hd)
+	pjs := workflow.GetProtojobs(hd)
 	if len(pjs) != 4 {
 		t.Fatalf("incorrect number of protojobs; got=%d wanted=%d", len(pjs), 4)
 	}
 
 	// test edges
-	wes := workflow.getWorkflowEdges(hd)
+	wes := workflow.GetWorkflowEdges(hd)
 	if len(wes) != 4 {
 		t.Fatalf("incorrect number of workflow edges; got=%d wanted=%d", len(wes), 4)
 	}
 
 	// test batches
-	wbs := workflow.getWorkflowBatches(hd)
+	wbs := workflow.GetWorkflowBatches(hd)
 	if len(wbs) != 1 {
 		t.Fatalf("incorrect number of workflow batches; got=%d wanted=%d", len(wbs), 1)
 	}
 
 	wb := wbs[0]
-	rdds := wb.getRdds(hd)
+	rdds := wb.GetRdds(hd)
 	if len(rdds) != 4 {
 		t.Fatalf("incorrect number of rdds; got=%d wanted=%d", len(wbs), 4)
 	}
 
-	rddes := wb.getRddEdges(hd)
+	rddes := wb.GetRddEdges(hd)
 	if len(rddes) != 4 {
 		t.Fatalf("incorrect number of rdd edges; got=%d wanted=%d", len(wbs), 4)
 	}
