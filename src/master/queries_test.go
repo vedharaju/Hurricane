@@ -39,3 +39,15 @@ func TestBasic(t *testing.T) {
 	fmt.Printf("  ... Passed\n")
 
 }
+
+
+func TestComplex(t *testing.T) {
+	hd := GetTestDbConnection()
+	setup(hd)
+	defer cleanup(hd)
+
+	fmt.Printf("Test: Diamond Workflow Queries ...\n")
+
+	// TODO: Finish this.
+
+}
