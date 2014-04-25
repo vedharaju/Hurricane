@@ -40,13 +40,12 @@ func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 
 //
 // tick() is called once per PingInterval; it should notice
-// if servers have died or recovered, and change the view
-// accordingly.
+// if servers have died or recovered.
 //
 func (m *Master) tick() {
 	// Clean dead servers
 	for k, v := range m.workers {
-		if PingInterval*DeadPings < time.Since(v) {
+			if PingInterval*DeadPings < time.Since(v) {
 			delete(m.workers, k)
 		}
 	}
