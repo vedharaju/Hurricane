@@ -10,6 +10,10 @@ type Tuple struct {
 
 type TupleFunc func(Tuple)
 
+type Segment struct {
+  Slice []Tuple
+}
+
 func MakeTuple(length int) Tuple {
   tuple := Tuple{}
   tuple.Slice = make([]string, length)
