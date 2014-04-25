@@ -11,15 +11,22 @@ func TestSerializeDeserialize(t *testing.T) {
 	tuple1.Slice[0] = "MOO"
 	tuple1.Slice[1] = "abc"
 
+<<<<<<< HEAD
 	tuple2, index := DeserializeTuple(tuple1.SerializeTuple(1))
+=======
+	tuple2 := DeserializeTuple(tuple1.SerializeTuple())
+>>>>>>> 3de47f0... added worker and master with ping testing
 
 	if !reflect.DeepEqual(tuple1, tuple2) {
 		t.Errorf("Failure %s != %s", tuple1, tuple2)
 	}
+<<<<<<< HEAD
 
 	if index != 1 {
 		t.Errorf("Failure, index %d != 1", index)
 	}
+=======
+>>>>>>> 3de47f0... added worker and master with ping testing
 }
 
 func TestReadTupleStream(t *testing.T) {
@@ -29,11 +36,16 @@ func TestReadTupleStream(t *testing.T) {
 		tuple := MakeTuple(1)
 		tuple.Slice[0] = strconv.Itoa(i)
 		oldsum += i
+<<<<<<< HEAD
 		data = append(data, tuple.SerializeTuple(4)...)
+=======
+		data = append(data, tuple.SerializeTuple()...)
+>>>>>>> 3de47f0... added worker and master with ping testing
 		data = append(data, '\n')
 	}
 
 	newsum := 0
+<<<<<<< HEAD
 	ReadTupleStream(bytes.NewBuffer(data), func(tuple Tuple, index int) {
 		num, _ := strconv.Atoi(tuple.Slice[0])
 		newsum += num
@@ -41,6 +53,11 @@ func TestReadTupleStream(t *testing.T) {
 		if index != 4 {
 			t.Errorf("Failure index %d != 4", index)
 		}
+=======
+	ReadTupleStream(bytes.NewBuffer(data), func(t Tuple) {
+		num, _ := strconv.Atoi(t.Slice[0])
+		newsum += num
+>>>>>>> 3de47f0... added worker and master with ping testing
 	})
 
 	if oldsum != newsum {

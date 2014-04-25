@@ -11,14 +11,14 @@ func setup(hd *hood.Hood) {
 	CreateTables(hd)
 }
 
-func cleanup(hd *hood.Hood) {
+func cleanup_database(hd *hood.Hood) {
 	ResetDb(hd)
 }
 
 func TestBasic(t *testing.T) {
 	hd := GetTestDbConnection()
 	setup(hd)
-	defer cleanup(hd)
+	defer cleanup_database(hd)
 
 	fmt.Printf("Test: Basic RDD has segments ...\n")
 
@@ -43,7 +43,7 @@ func TestBasic(t *testing.T) {
 func TestComplex(t *testing.T) {
 	hd := GetTestDbConnection()
 	setup(hd)
-	defer cleanup(hd)
+	defer cleanup_database(hd)
 
 	fmt.Printf("Test: Diamond Workflow Queries ...\n")
 
