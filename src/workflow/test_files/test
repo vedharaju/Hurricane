@@ -1,0 +1,13 @@
+JOBS
+
+A: python errybody.py
+B: python who.py
+C: python test.py
+D: python you.py
+E: python me.py
+F: python hello.py
+
+WORKFLOW
+
+A,B,C -> D
+E,D -> F
