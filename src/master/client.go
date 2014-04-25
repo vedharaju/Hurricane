@@ -9,7 +9,7 @@ type Clerk struct {
 
 	// (host:port) information
 	master string
-	me string
+	me     string
 }
 
 func MakeClerk(me string, master string) *Clerk {

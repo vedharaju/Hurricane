@@ -13,7 +13,7 @@ type Master struct {
 	me int
 
 	// Map of workers to latest ping time
-	workers map[string] time.Time
+	workers map[string]time.Time
 }
 
 //
@@ -44,9 +44,9 @@ func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 // accordingly.
 //
 func (m *Master) tick() {
-		// Clean dead servers
+	// Clean dead servers
 	for k, v := range m.workers {
-		if PingInterval * DeadPings < time.Since(v) {
+		if PingInterval*DeadPings < time.Since(v) {
 			delete(m.workers, k)
 		}
 	}
@@ -65,14 +65,14 @@ func StartServer(server string) *Master {
 
 	master := new(Master)
 
-	master.workers = make(map[string] time.Time)
+	master.workers = make(map[string]time.Time)
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(master)
 
 	// prepare to receive connections from clients.
-  // change "unix" to "tcp" to use over a network.
-/*  os.Remove(server) // only needed for "unix"*/
+	// change "unix" to "tcp" to use over a network.
+	/*  os.Remove(server) // only needed for "unix"*/
 	l, e := net.Listen("unix", server)
 	if e != nil {
 		log.Fatal("listen error: ", e)
@@ -89,10 +89,10 @@ func StartServer(server string) *Master {
 	}()
 
 	// create a thread to call tick() periodically.
-  go func() {
-    master.tick()
-    time.Sleep(PingInterval)
-  }()
+	go func() {
+		master.tick()
+		time.Sleep(PingInterval)
+	}()
 
 	return master
 }

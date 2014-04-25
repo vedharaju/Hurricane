@@ -29,14 +29,14 @@ func TestBasicPing(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	masterhost := port("master", 1)
-  StartServer(masterhost)
+	StartServer(masterhost)
 
 	workerhost := port("worker", 2)
-  worker := MakeClerk(workerhost, masterhost)
+	worker := MakeClerk(workerhost, masterhost)
 
 	if ok := worker.Ping(); !ok {
 		t.Fatalf("Could not ping master")
 	}
 
-  fmt.Printf("  ... Passed\n")
+	fmt.Printf("  ... Passed\n")
 }
