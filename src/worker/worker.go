@@ -6,6 +6,7 @@ import "net/rpc"
 import "sync"
 import "log"
 import "master"
+import "strings"
 
 type Worker struct {
 	mu     sync.Mutex
@@ -41,7 +42,7 @@ func (w *Worker) kill() {
 // please don't change this function.
 //
 func call(srv string, rpcname string, args interface{}, reply interface{}) bool {
-	c, errx := rpc.Dial("unix", srv)
+	c, errx := rpc.Dial("tcp", srv)
 	if errx != nil {
 		return false
 	}
@@ -56,19 +57,22 @@ func call(srv string, rpcname string, args interface{}, reply interface{}) bool 
 	return false
 }
 
-func StartServer(server string, master_path string) *Worker {
+func StartServer(hostname string, masterhost string) *Worker {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
-
+        
+        fmt.Println("Starting worker")
 	worker := new(Worker)
-	worker.master = master_path
+	worker.master = masterhost
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
 
-	// os.Remove(servers[me])
-	l, e := net.Listen("unix", server)
+
+        // ignore the domain name: listen on all urls
+  	splitName := strings.Split(hostname, ":")
+ 	l, e := net.Listen("tcp", ":"+splitName[1])
 	if e != nil {
 		log.Fatal("listen error: ", e)
 	}
@@ -78,21 +82,23 @@ func StartServer(server string, master_path string) *Worker {
 		if conn, err := worker.l.Accept(); err == nil {
 			go rpcs.ServeConn(conn)
 		} else {
-			fmt.Printf("Worker(%s) accept: %v\n", server, err.Error())
+			fmt.Printf("Worker(%s) accept: %v\n", hostname, err.Error())
 			worker.kill()
 		}
 	}()
 
 	// Register the worker to master
+        fmt.Println("Registered worker")
 	ok := false
 	for !ok {
-		args := master.RegisterArgs{Me: server}
+		args := master.RegisterArgs{Me: hostname}
 		reply := master.RegisterReply{}
 		ok = call(worker.master, "Master.Register", args, &reply)
 		if ok && reply.Err != OK {
 			ok = false
 		}
 	}
-
-	return worker
+        fmt.Println("Registered worker")
+	
+        return worker
 }
