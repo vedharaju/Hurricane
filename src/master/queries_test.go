@@ -40,7 +40,6 @@ func TestBasic(t *testing.T) {
 
 }
 
-
 func TestComplex(t *testing.T) {
 	hd := GetTestDbConnection()
 	setup(hd)
