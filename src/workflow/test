@@ -1,0 +1,19 @@
+JOBS
+
+A: blah blah define job
+B: blah blah define job
+C: blah blah define job
+D: blah blah define job
+E: blah blah define job
+
+WORKFLOW
+
+start -> A
+start -> B
+start -> C
+start -> E
+
+A,B,C -> D
+E,D -> F
+
+E -> end
