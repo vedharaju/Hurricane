@@ -5,11 +5,12 @@ import "net"
 import "net/rpc"
 import "sync"
 import "log"
+import "master"
 
 type Worker struct {
-	mu sync.Mutex
-	l  net.Listener
-	me int
+	mu     sync.Mutex
+	l      net.Listener
+	master string
 }
 
 func (w *Worker) Ping(args *PingArgs, reply *PingReply) error {
@@ -24,19 +25,50 @@ func (w *Worker) kill() {
 	w.l.Close()
 }
 
-func StartServer(servers []string, me int) *Worker {
+// call() sends an RPC to the rpcname handler on server srv
+// with arguments args, waits for the reply, and leaves the
+// reply in reply. the reply argument should be a pointer
+// to a reply structure.
+//
+// the return value is true if the server responded, and false
+// if call() was not able to contact the server. in particular,
+// the reply's contents are only valid if call() returned true.
+//
+// you should assume that call() will time out and return an
+// error after a while if it doesn't get a reply from the server.
+//
+// please use call() to send all RPCs, in client.go and server.go.
+// please don't change this function.
+//
+func call(srv string, rpcname string, args interface{}, reply interface{}) bool {
+	c, errx := rpc.Dial("unix", srv)
+	if errx != nil {
+		return false
+	}
+	defer c.Close()
+
+	err := c.Call(rpcname, args, reply)
+	if err == nil {
+		return true
+	}
+
+	fmt.Println(err)
+	return false
+}
+
+func StartServer(server string, master_path string) *Worker {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
 
 	worker := new(Worker)
-	worker.me = me
+	worker.master = master_path
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
 
 	// os.Remove(servers[me])
-	l, e := net.Listen("unix", servers[me])
+	l, e := net.Listen("unix", server)
 	if e != nil {
 		log.Fatal("listen error: ", e)
 	}
@@ -46,10 +78,21 @@ func StartServer(servers []string, me int) *Worker {
 		if conn, err := worker.l.Accept(); err == nil {
 			go rpcs.ServeConn(conn)
 		} else {
-			fmt.Printf("Worker(%v) accept: %v\n", me, err.Error())
+			fmt.Printf("Worker(%s) accept: %v\n", server, err.Error())
 			worker.kill()
 		}
 	}()
+
+	// Register the worker to master
+	ok := false
+	for !ok {
+		args := master.RegisterArgs{Me: server}
+		reply := master.RegisterReply{}
+		ok = call(worker.master, "Master.Register", args, &reply)
+		if ok && reply.Err != OK {
+			ok = false
+		}
+	}
 
 	return worker
 }

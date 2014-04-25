@@ -5,6 +5,7 @@ import "runtime"
 import "strconv"
 import "os"
 import "fmt"
+import "master"
 
 func port(tag string, host int) string {
 	s := "/var/tmp/hurricane-"
@@ -25,33 +26,15 @@ func cleanup(wa []*Worker) {
 	}
 }
 
-func TestBasic(t *testing.T) {
-	runtime.GOMAXPROCS(4)
+func TestBasicStartWorker(t *testing.T) {
+	runtime.GOMAXPROCS(2)
 
-	const nservers = 3
-	var wa []*Worker = make([]*Worker, nservers)
-	var wh []string = make([]string, nservers)
-	defer cleanup(wa)
+	fmt.Printf("Test: Worker starts up without issues")
+	masterhost := port("master", 1)
+	master.StartServer(masterhost)
 
-	for i := 0; i < nservers; i++ {
-		wh[i] = port("basic", i)
-	}
-	for i := 0; i < nservers; i++ {
-		wa[i] = StartServer(wh, i)
-	}
-
-	ck := MakeClerk(wh)
-	var cka [nservers]*Clerk
-	for i := 0; i < nservers; i++ {
-		cka[i] = MakeClerk([]string{wh[i]})
-	}
-
-	fmt.Printf("Test: Basic ping ...\n")
-
-	pr := ck.Ping(wh[0])
-	if !pr {
-		t.Fatalf("Ping failure")
-	}
+	workerhost := port("worker", 2)
+	StartServer(workerhost, masterhost)
 
 	fmt.Printf("  ... Passed\n")
 }

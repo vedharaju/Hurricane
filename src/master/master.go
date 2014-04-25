@@ -33,6 +33,7 @@ func (m *Master) Ping(args *PingArgs, reply *PingReply) error {
 // server Register RPC handler.
 //
 func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
+        fmt.Println("Registering", args.Me)
 	m.workers[args.Me] = time.Now()
 
 	reply.Err = OK

@@ -1,7 +1,7 @@
 package worker
 
-import "net/rpc"
-import "fmt"
+//import "net/rpc"
+//import "fmt"
 import "sync"
 
 const (
@@ -29,6 +29,7 @@ func MakeClerk(servers []string) *Clerk {
 	return ck
 }
 
+/*
 // call() sends an RPC to the rpcname handler on server srv
 // with arguments args, waits for the reply, and leaves the
 // reply in reply. the reply argument should be a pointer
@@ -68,4 +69,4 @@ func (ck *Clerk) Ping(server string) bool {
 		return true
 	}
 	return false
-}
+}*/
