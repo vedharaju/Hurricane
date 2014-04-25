@@ -3,35 +3,24 @@ package master
 import "testing"
 import "runtime"
 import "strconv"
-import "os"
 import "fmt"
 
-func port(tag string, host int) string {
-	s := "/var/tmp/hurricane-"
-	s += strconv.Itoa(os.Getuid()) + "/"
-	os.Mkdir(s, 0777)
-	s += "w-"
-	s += strconv.Itoa(os.Getpid()) + "-"
-	s += tag + "-"
-	s += strconv.Itoa(host)
-	return s
-}
-
-func cleanup(ma []*Master) {
-	for i := 0; i < len(ma); i++ {
-		if ma[i] != nil {
-			ma[i].kill()
-		}
-	}
+func port(url string, port int) string {
+	return url + ":" + strconv.Itoa(port)
 }
 
 func TestBasicPing(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
-	masterhost := port("master", 1)
-	StartServer(masterhost)
+	// setup test database
+	hd := GetTestDbConnection()
+	ResetDb(hd)
+	CreateTables(hd)
 
-	workerhost := port("worker", 2)
+	masterhost := port("localhost", 58293)
+	StartServer(masterhost, hd)
+
+	workerhost := port("localhost", 13243)
 	worker := MakeClerk(workerhost, masterhost)
 
 	if ok := worker.Ping(); !ok {

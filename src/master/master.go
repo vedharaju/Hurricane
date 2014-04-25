@@ -6,6 +6,8 @@ import "net"
 import "net/rpc"
 import "sync"
 import "log"
+import "github.com/eaigner/hood"
+import "strings"
 
 type Master struct {
 	mu sync.Mutex
@@ -57,7 +59,7 @@ func (m *Master) kill() {
 	m.l.Close()
 }
 
-func StartServer(server string) *Master {
+func StartServer(hostname string, hd *hood.Hood) *Master {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
@@ -69,10 +71,9 @@ func StartServer(server string) *Master {
 	rpcs := rpc.NewServer()
 	rpcs.Register(master)
 
-	// prepare to receive connections from clients.
-	// change "unix" to "tcp" to use over a network.
-	/*  os.Remove(server) // only needed for "unix"*/
-	l, e := net.Listen("unix", server)
+	// ignore the domain name: listen on all urls
+	splitName := strings.Split(hostname, ":")
+	l, e := net.Listen("tcp", ":"+splitName[1])
 	if e != nil {
 		log.Fatal("listen error: ", e)
 	}
