@@ -9,14 +9,22 @@ const (
 
 	// workers should send a Ping RPC this often,
 	// to tell the master that the worker is alive.
-	PingInterval = time.Millisecond * 100
+	TickInterval = time.Millisecond * 100
 
 	// the master will declare a worker dead if it misses
 	// this many Ping RPCs in a row.
 	DeadPings = 5
+
+	NEW_BATCH    = 0
+	LAUNCH_TASK  = 1
+	TASK_SUCCESS = 2
+	TASK_FAILURE = 3
+	LAUNCH_JOB   = 4
+	JOB_COMPLETE = 5
 )
 
 type Err string
+type EventType int
 
 type RegisterArgs struct {
 	Me string
@@ -33,4 +41,9 @@ type PingArgs struct {
 
 type PingReply struct {
 	Err Err
+}
+
+type Event struct {
+	Type EventType
+	Id   int64
 }
