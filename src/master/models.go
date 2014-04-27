@@ -57,6 +57,9 @@ type Segment struct {
 	// Reference to the worker where this task is executing
 	WorkerId int64
 
+	// Index of the segment within the RDD (between 0 and RDD.Protojob.NumSegments)
+	Index int
+
 	// These fields are auto updated on save
 	Created hood.Created
 	Updated hood.Updated
@@ -84,6 +87,9 @@ type WorkflowEdge struct {
 	SourceJobId int64
 	DestJobId   int64
 
+	// True if the input segments should be grouped by partition
+	IsReduce bool
+
 	// These fields are auto updated on save
 	Created hood.Created
 	Updated hood.Updated
@@ -103,6 +109,15 @@ type Protojob struct {
 
 	// Name of the command, UDF or built-in
 	Command string
+
+	// Partition vector index, in the format (n1,n2,n3)
+	PartitionIndex string
+
+	// Number of segments in the output RDD
+	NumSegments int
+
+	// Number of partition buckets
+	NumBuckets int
 
 	// These fields are auto updated on save
 	Created hood.Created
