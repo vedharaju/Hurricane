@@ -85,7 +85,7 @@ func (m *Master) queueEvent(e Event) {
 func (m *Master) execNewBatch(workflowId int64) {
 	// look up workflow
 	// create new workflowbatch
-		// generate RDDs for each job
+	// generate RDDs for each job
 	// queue launch job events for first jobs
 }
 
@@ -93,14 +93,14 @@ func (m *Master) execLaunchTask(segmentId int64) {
 	// rpc to worker to run task
 
 	// if complete
-		// queue task complete event
+	// queue task complete event
 	// else
-		// queue task failed event
+	// queue task failed event
 }
 
 func (m *Master) execTaskSuccess(segmentId int64) {
 	// if last task in job
-		// queue job complete event
+	// queue job complete event
 }
 
 func (m *Master) execTaskFailure(segmentId int64) {
@@ -111,18 +111,18 @@ func (m *Master) execLaunchJob(rddId int64) {
 	// RUN JOB YAY!!!
 
 	// Look up RDD related RDD Edges
-		// Need to send to Worker:
-			// Segments (based on whether they contain a relevant partition)
-			// along with address of Worker, parent RDD
+	// Need to send to Worker:
+	// Segments (based on whether they contain a relevant partition)
+	// along with address of Worker, parent RDD
 
 	// launch tasks with appropriate data
 }
 
 func (m *Master) execJobComplete(rddId int64) {
 	// if another job in workflow batch
-		// queue next task if RDDs available
+	// queue next task if RDDs available
 	// else
-		// finish
+	// finish
 }
 
 //

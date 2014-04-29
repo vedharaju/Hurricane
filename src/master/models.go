@@ -87,8 +87,8 @@ type WorkflowEdge struct {
 	SourceJobId int64
 	DestJobId   int64
 
-	// True if the input segments should be grouped by partition
-	IsReduce bool
+	// Delay of the input RDD. 0 means no delay
+	Delay int
 
 	// These fields are auto updated on save
 	Created hood.Created
@@ -118,6 +118,9 @@ type Protojob struct {
 
 	// Number of partition buckets
 	NumBuckets int
+
+	// True if the input segments should be grouped by partition
+	IsReduce bool
 
 	// These fields are auto updated on save
 	Created hood.Created
