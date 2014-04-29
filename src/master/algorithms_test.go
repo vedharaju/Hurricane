@@ -11,7 +11,7 @@ func TestMakeBatch(t *testing.T) {
 
 	workflow := MockDiamondWorkflow(hd)
 
-	wb := workflow.MakeBatch(hd, 50, 100)
+	wb := workflow.MakeBatch(hd, 50)
 
 	// there should be two batches, because the diamond workflow started with one
 	wbs := workflow.GetWorkflowBatches(hd)
@@ -32,9 +32,5 @@ func TestMakeBatch(t *testing.T) {
 
 	if wb.StartTime != 50 {
 		t.Fatalf("wrong start time; got=%d wanted=%d", wb.StartTime, 50)
-	}
-
-	if wb.Duration != 100 {
-		t.Fatalf("wrong duration; got=%d wanted=%d", wb.Duration, 100)
 	}
 }

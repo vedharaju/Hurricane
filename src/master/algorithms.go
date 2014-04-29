@@ -7,12 +7,11 @@ import (
 // Instantiate a workflow batch based on a worflow. This includes creating RDDs
 // for each Protojob, and connecting them with RddEdges.  The caller of this
 // function should wrap it in a trasnaction
-func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int, duration int) *WorkflowBatch {
+func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int) *WorkflowBatch {
 	// Create workflowBatch object
 	batch := &WorkflowBatch{
 		WorkflowId: int64(workflow.Id),
 		StartTime:  start,
-		Duration:   duration,
 	}
 	saveOrPanic(hd, batch)
 

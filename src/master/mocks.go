@@ -30,7 +30,6 @@ func MockWorkflowBatch(hd *hood.Hood, workflow *Workflow) *WorkflowBatch {
 	wb := WorkflowBatch{
 		WorkflowId: int64(workflow.Id),
 		StartTime:  13124234,
-		Duration:   500,
 	}
 	saveOrPanic(hd, &wb)
 	return &wb

@@ -74,6 +74,9 @@ type Workflow struct {
 	// Auto-incrementing int field 'id'
 	Id hood.Id
 
+	// Duration of the batch (milliseconds)
+	Duration int
+
 	// These fields are auto updated on save
 	Created hood.Created
 	Updated hood.Updated
@@ -140,9 +143,6 @@ type WorkflowBatch struct {
 
 	// Start time of the batch (unix timestamp UTC)
 	StartTime int
-
-	// Duration of the batch (milliseconds)
-	Duration int
 
 	// These fields are auto updated on save
 	Created hood.Created
