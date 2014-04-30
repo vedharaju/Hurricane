@@ -62,20 +62,16 @@ func (workflow *Workflow) GetWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
 	return pointerResults
 }
 
-// Get all Rdd edges whose source or dest Rdd is in the given workflow
-// batch. Note that the source and dest Rdds may be produced in different
-// batches.
+// Get all Rdd edges whose dest Rdd is in the given workflow batch. Note that
+// the source and dest Rdds may be produced in different batches.
 func (workflowBatch *WorkflowBatch) GetRddEdges(tx *hood.Hood) []*RddEdge {
 	var results []RddEdge
 	err := tx.FindSql(&results,
 		`select *
     from rdd_edge
-    left join rdd source_rdd
-    on rdd_edge.source_rdd_id = source_rdd.id
     left join rdd dest_rdd
     on rdd_edge.dest_rdd_id = dest_rdd.id
-    where source_rdd.workflow_batch_id = $1
-    or dest_rdd.workflow_batch_id = $1`, workflowBatch.Id)
+    where dest_rdd.workflow_batch_id = $1`, workflowBatch.Id)
 	if err != nil {
 		panic(err)
 	}
