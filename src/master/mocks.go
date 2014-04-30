@@ -13,8 +13,11 @@ func saveOrPanic(hd *hood.Hood, x interface{}) {
 
 func MockProtojob(hd *hood.Hood, workflow *Workflow) *Protojob {
 	job := Protojob{
-		Command:    "command",
-		WorkflowId: int64(workflow.Id),
+		Command:        "command",
+		WorkflowId:     int64(workflow.Id),
+		PartitionIndex: "(1)",
+		NumSegments:    2,
+		NumBuckets:     4,
 	}
 	saveOrPanic(hd, &job)
 	return &job
@@ -56,6 +59,8 @@ func MockSegment(hd *hood.Hood, rdd *Rdd, worker *Worker) *Segment {
 	s := Segment{
 		RddId:    int64(rdd.Id),
 		WorkerId: int64(worker.Id),
+		Status:   0,
+		Index:    0,
 	}
 	saveOrPanic(hd, &s)
 	return &s

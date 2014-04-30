@@ -11,7 +11,7 @@ func TestMakeBatch(t *testing.T) {
 
 	workflow := MockDiamondWorkflow(hd)
 
-	lastBatch := GetLastWorkflowBatch(hd, workflow)
+	lastBatch := workflow.GetLastWorkflowBatch(hd)
 	if lastBatch == nil {
 		t.Fatalf("last batch not found")
 	}
@@ -47,7 +47,7 @@ func TestFindSourceRdds(t *testing.T) {
 
 	workflow := MockDiamondWorkflow(hd)
 
-	lastBatch := GetLastWorkflowBatch(hd, workflow)
+	lastBatch := workflow.GetLastWorkflowBatch(hd)
 	if lastBatch == nil {
 		t.Fatalf("last batch not found")
 	}
@@ -56,5 +56,22 @@ func TestFindSourceRdds(t *testing.T) {
 
 	if len(rdds) != 1 {
 		t.Fatalf("wrong number of source rdds; got=%d wanted=%d", len(rdds), 1)
+	}
+}
+
+func TestCreateSegments(t *testing.T) {
+	hd := GetTestDbConnection()
+	ResetDb(hd)
+	CreateTables(hd)
+
+	w := MockDiamondWorkflow(hd)
+	j := MockProtojob(hd, w)
+	wb := MockWorkflowBatch(hd, w)
+	rdd := MockRdd(hd, wb, j)
+
+	segments := rdd.CreateSegments(hd)
+
+	if len(segments) != 2 {
+		t.Fatalf("wrong number of segments; got=%d wanted=%d", len(segments), 2)
 	}
 }

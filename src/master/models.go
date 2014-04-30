@@ -4,6 +4,11 @@ import (
 	"github.com/eaigner/hood"
 )
 
+const (
+	SEGMENT_COMPLETE = 1
+	SEGMENT_PENDING  = 0
+)
+
 // Dependency between two RDDs
 type RddEdge struct {
 	// Auto-incrementing int field 'id'
@@ -63,6 +68,9 @@ type Segment struct {
 
 	// Index of the segment within the RDD (between 0 and RDD.Protojob.NumSegments)
 	Index int
+
+	// Status of Segment (SEGMENT_COMPLETE vs SEGMENT_PENDING)
+	Status int
 
 	// These fields are auto updated on save
 	Created hood.Created

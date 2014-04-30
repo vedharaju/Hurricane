@@ -225,7 +225,7 @@ func GetRddByStartTime(tx *hood.Hood, protojobId int64, startTime int) *Rdd {
 	}
 }
 
-func GetLastWorkflowBatch(tx *hood.Hood, workflow *Workflow) *WorkflowBatch {
+func (workflow *Workflow) GetLastWorkflowBatch(tx *hood.Hood) *WorkflowBatch {
 	var results []WorkflowBatch
 	err := tx.Where("workflow_id", "=", workflow.Id).OrderBy("start_time").Desc().Limit(1).Find(&results)
 	if err != nil {
@@ -234,6 +234,20 @@ func GetLastWorkflowBatch(tx *hood.Hood, workflow *Workflow) *WorkflowBatch {
 
 	if len(results) == 0 {
 		return nil
+	} else {
+		return &results[0]
+	}
+}
+
+func (rdd *Rdd) GetProtojob(tx *hood.Hood) *Protojob {
+	var results []Protojob
+	err := tx.Where("id", "=", rdd.ProtojobId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("Rdd is missing protojob")
 	} else {
 		return &results[0]
 	}
