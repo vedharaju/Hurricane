@@ -26,13 +26,18 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int) *WorkflowBatch {
 		pjToRdd[int64(protojob.Id)] = int64(rdd.Id)
 	}
 
-	// Create edges (TODO: also create edges for inter-batch dependencies)
+	// Create edges
 	for _, workflowEdge := range workflow.GetWorkflowEdges(hd) {
-		rddEdge := &RddEdge{
-			SourceRddId: pjToRdd[workflowEdge.SourceJobId],
-			DestRddId:   pjToRdd[workflowEdge.DestJobId],
+		// Source rdd might be delayed
+		source_rdd := GetRddByStartTime(hd, workflowEdge.SourceJobId, start-workflowEdge.Delay*workflow.Duration)
+		if source_rdd != nil {
+			rddEdge := &RddEdge{
+				SourceRddId:    int64(source_rdd.Id),
+				DestRddId:      pjToRdd[workflowEdge.DestJobId],
+				WorkflowEdgeId: int64(workflowEdge.Id),
+			}
+			saveOrPanic(hd, rddEdge)
 		}
-		saveOrPanic(hd, rddEdge)
 	}
 
 	return batch

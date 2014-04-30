@@ -11,7 +11,12 @@ func TestMakeBatch(t *testing.T) {
 
 	workflow := MockDiamondWorkflow(hd)
 
-	wb := workflow.MakeBatch(hd, 50)
+	lastBatch := GetLastWorkflowBatch(hd, workflow)
+	if lastBatch == nil {
+		t.Fatalf("last batch not found")
+	}
+
+	wb := workflow.MakeBatch(hd, lastBatch.StartTime+workflow.Duration)
 
 	// there should be two batches, because the diamond workflow started with one
 	wbs := workflow.GetWorkflowBatches(hd)
@@ -30,7 +35,7 @@ func TestMakeBatch(t *testing.T) {
 		t.Fatalf("incorrect number of rdd edges; got=%d wanted=%d", len(wbs), 4)
 	}
 
-	if wb.StartTime != 50 {
-		t.Fatalf("wrong start time; got=%d wanted=%d", wb.StartTime, 50)
+	if wb.StartTime != 200 {
+		t.Fatalf("wrong start time; got=%d wanted=%d", wb.StartTime, 200)
 	}
 }

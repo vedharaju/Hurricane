@@ -21,7 +21,9 @@ func MockProtojob(hd *hood.Hood, workflow *Workflow) *Protojob {
 }
 
 func MockWorkflow(hd *hood.Hood) *Workflow {
-	workflow := Workflow{}
+	workflow := Workflow{
+		Duration: 100,
+	}
 	saveOrPanic(hd, &workflow)
 	return &workflow
 }
@@ -29,7 +31,7 @@ func MockWorkflow(hd *hood.Hood) *Workflow {
 func MockWorkflowBatch(hd *hood.Hood, workflow *Workflow) *WorkflowBatch {
 	wb := WorkflowBatch{
 		WorkflowId: int64(workflow.Id),
-		StartTime:  13124234,
+		StartTime:  100,
 	}
 	saveOrPanic(hd, &wb)
 	return &wb

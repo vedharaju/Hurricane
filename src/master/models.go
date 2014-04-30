@@ -158,6 +158,7 @@ type WorkflowBatch struct {
 
 func (table *WorkflowBatch) Indexes(indexes *hood.Indexes) {
 	indexes.Add("workflow_batch__workflow_id", "workflow_id")
+	indexes.Add("workflow_batch__start_time", "start_time")
 }
 
 type Worker struct {

@@ -188,3 +188,31 @@ func GetWorker(tx *hood.Hood, id int64) *Worker {
 		return &results[0]
 	}
 }
+
+func GetRddByStartTime(tx *hood.Hood, protojobId int64, startTime int) *Rdd {
+	var results []Rdd
+	err := tx.Join(hood.InnerJoin, &WorkflowBatch{}, "workflow_batch.id", "rdd.workflow_batch_id").Where("protojob_id", "=", protojobId).And("start_time", "=", startTime).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		return nil
+	} else {
+		return &results[0]
+	}
+}
+
+func GetLastWorkflowBatch(tx *hood.Hood, workflow *Workflow) *WorkflowBatch {
+	var results []WorkflowBatch
+	err := tx.Where("workflow_id", "=", workflow.Id).OrderBy("start_time").Desc().Limit(1).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		return nil
+	} else {
+		return &results[0]
+	}
+}
