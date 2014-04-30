@@ -86,15 +86,17 @@ func (m *Master) queueEvent(e Event) {
 }
 
 func (m *Master) execNewBatch(workflowId int64) {
+	tx := m.hd.Begin()
+
 	// look up workflow
-	workflow := GetWorkflow(m.hd, workflowId)
+	workflow := GetWorkflow(tx, workflowId)
 	// create new workflowbatch
-	lastBatch := workflow.GetLastWorkflowBatch(m.hd)
+	lastBatch := workflow.GetLastWorkflowBatch(tx)
 
 	now := int(time.Now().Unix())
 	if lastBatch == nil {
 		// if no last batch, then create the first batch right now - duration - time_eror
-		batch := workflow.MakeBatch(m.hd, now-workflow.Duration-TIME_ERROR)
+		batch := workflow.MakeBatch(tx, now-workflow.Duration-TIME_ERROR)
 		m.launchBatchSourceJobs(batch)
 	} else {
 		// TODO: figure out what exactly to do if there are multiple
@@ -104,10 +106,12 @@ func (m *Master) execNewBatch(workflowId int64) {
 		// for now, only launch a new batch if the proper time has arrived
 		// (eg. the end time of the new batch has definitely passed)
 		if now > lastBatch.StartTime+2*workflow.Duration+TIME_ERROR {
-			batch := workflow.MakeBatch(m.hd, lastBatch.StartTime+workflow.Duration)
+			batch := workflow.MakeBatch(tx, lastBatch.StartTime+workflow.Duration)
 			m.launchBatchSourceJobs(batch)
 		}
 	}
+
+	commitOrPanic(tx)
 }
 
 func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
@@ -122,32 +126,71 @@ func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
 }
 
 func (m *Master) execLaunchTask(segmentId int64) {
-	// rpc to worker to run task
+	tx := m.hd.Begin()
 
-	// if complete
-	// queue task complete event
-	// else
-	// queue task failed event
+	segment := GetSegment(tx, segmentId)
+	inputs := segment.CalculateInputSegments(tx)
+
+	// TODO: implement the RPC call
+	go func() {
+		fmt.Println(inputs)
+		e := Event{
+			Type: TASK_SUCCESS,
+			Id:   segmentId,
+		}
+		m.queueEvent(e)
+	}()
+
+	commitOrPanic(tx)
 }
 
 func (m *Master) execTaskSuccess(segmentId int64) {
-	// if last task in job
-	// queue job complete event
+	tx := m.hd.Begin()
+
+	segment := GetSegment(tx, segmentId)
+	rdd := segment.GetRdd(tx)
+	pj := rdd.GetProtojob(tx)
+
+	segment.Status = SEGMENT_COMPLETE
+	saveOrPanic(tx, segment)
+
+	numComplete := rdd.GetNumSegmentsComplete(tx)
+
+	if numComplete == pj.NumSegments {
+		e := Event{
+			Type: JOB_COMPLETE,
+			Id:   int64(rdd.Id),
+		}
+		m.queueEvent(e)
+	}
+
+	commitOrPanic(tx)
 }
 
 func (m *Master) execTaskFailure(segmentId int64) {
-	// queue event to launch job for failed task
+	e := Event{
+		Type: LAUNCH_TASK,
+		Id:   int64(segmentId),
+	}
+	m.queueEvent(e)
 }
 
 func (m *Master) execLaunchJob(rddId int64) {
-	// RUN JOB YAY!!!
+	tx := m.hd.Begin()
 
-	// Look up RDD related RDD Edges
-	// Need to send to Worker:
-	// Segments (based on whether they contain a relevant partition)
-	// along with address of Worker, parent RDD
+	// TODO: check that all of the input RDDS are available
 
-	// launch tasks with appropriate data
+	rdd := GetRdd(tx, rddId)
+	segments := rdd.CreateSegments(tx)
+	for _, segment := range segments {
+		e := Event{
+			Type: LAUNCH_TASK,
+			Id:   int64(segment.Id),
+		}
+		m.queueEvent(e)
+	}
+
+	commitOrPanic(tx)
 }
 
 func (m *Master) execJobComplete(rddId int64) {
@@ -192,9 +235,9 @@ func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 // Instead, crash gracefully.
 //
 func (m *Master) tick() {
-	// Clean dead servers
+	// TODO: Clean dead servers
 
-	// Launch new batches if necessary
+	// TODO: Launch new batches
 }
 
 // tell the server to shut itself down.

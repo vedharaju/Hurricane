@@ -4,6 +4,13 @@ import (
 	"github.com/eaigner/hood"
 )
 
+type SegmentInput struct {
+	SegmentId      int64
+	PartitionIndex int
+	WorkerUrl      string
+	Index          int
+}
+
 // Instantiate a workflow batch based on a worflow. This includes creating RDDs
 // for each Protojob, and connecting them with RddEdges.  The caller of this
 // function should wrap it in a trasnaction
@@ -79,4 +86,72 @@ func (rdd *Rdd) CreateSegments(hd *hood.Hood) []*Segment {
 		segments[i] = s
 	}
 	return segments
+}
+
+// Calculate the input segments for a given segment
+func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*SegmentInput {
+	rdd := segment.GetRdd(hd)
+	pj := rdd.GetProtojob(hd)
+
+	inputRddEdges := rdd.GetInputEdges(hd)
+	inputRddEdgeMap := make(map[int64]*RddEdge)
+	for _, edge := range inputRddEdges {
+		inputRddEdgeMap[int64(edge.Id)] = edge
+	}
+
+	inputWorkflowEdges := pj.GetInputEdges(hd)
+	inputWorkflowEdgeMap := make(map[int64]*WorkflowEdge)
+	for _, edge := range inputWorkflowEdges {
+		inputWorkflowEdgeMap[int64(edge.Id)] = edge
+	}
+
+	sourceProtojobs := pj.GetSourceProtojobs(hd)
+	sourceProtojobMap := make(map[int64]*Protojob)
+	for _, pj2 := range sourceProtojobs {
+		sourceProtojobMap[int64(pj2.Id)] = pj2
+	}
+
+	sourceRdds := rdd.GetSourceRdds(hd)
+	sourceRddMap := make(map[int64]*Rdd)
+	for _, rdd2 := range sourceRdds {
+		sourceRddMap[int64(rdd2.Id)] = rdd2
+	}
+
+	workers := GetWorkers(hd)
+	workerMap := make(map[int64]*Worker)
+	for _, worker := range workers {
+		workerMap[int64(worker.Id)] = worker
+	}
+
+	output := make([]*SegmentInput, 0)
+
+	for _, inputRddEdge := range inputRddEdges {
+		inputWorkflowEdge := inputWorkflowEdgeMap[inputRddEdge.WorkflowEdgeId]
+		sourceRdd := sourceRddMap[inputRddEdge.SourceRddId]
+		sourcePj := sourceProtojobMap[sourceRdd.ProtojobId]
+		sourceSegments := sourceRdd.GetSegments(hd)
+		for _, sourceSegment := range sourceSegments {
+			for i := 0; i < sourcePj.NumBuckets; i++ {
+				// calculate the assignment for the source segment
+				var segmentAssignment int
+				if pj.IsReduce {
+					segmentAssignment = i % pj.NumSegments
+				} else {
+					segmentAssignment = (sourceSegment.Index*sourcePj.NumBuckets + i) * pj.NumSegments / (sourcePj.NumBuckets * sourcePj.NumSegments)
+				}
+				// is the source segment assigned to this one?
+				if segmentAssignment == segment.Index {
+					input := &SegmentInput{
+						SegmentId:      int64(sourceSegment.Id),
+						PartitionIndex: i,
+						WorkerUrl:      workerMap[sourceSegment.WorkerId].Url,
+						Index:          inputWorkflowEdge.Index,
+					}
+					output = append(output, input)
+				}
+			}
+		}
+	}
+
+	return output
 }

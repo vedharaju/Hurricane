@@ -205,7 +205,7 @@ func GetWorker(tx *hood.Hood, id int64) *Worker {
 	}
 
 	if len(results) == 0 {
-		return nil
+		panic("could not find worker with given id")
 	} else {
 		return &results[0]
 	}
@@ -262,6 +262,157 @@ func GetWorkflow(tx *hood.Hood, workflowId int64) *Workflow {
 
 	if len(results) == 0 {
 		panic("could not find workflow with given id")
+	} else {
+		return &results[0]
+	}
+}
+
+func GetRdd(tx *hood.Hood, rddId int64) *Rdd {
+	var results []Rdd
+	err := tx.Where("id", "=", rddId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find rdd with given id")
+	} else {
+		return &results[0]
+	}
+}
+
+func (rdd *Rdd) GetInputEdges(tx *hood.Hood) []*RddEdge {
+	var results []RddEdge
+	err := tx.Where("dest_rdd_id", "=", rdd.Id).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*RddEdge, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func GetSegment(tx *hood.Hood, segmentId int64) *Segment {
+	var results []Segment
+	err := tx.Where("id", "=", segmentId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find segment with given id")
+	} else {
+		return &results[0]
+	}
+}
+
+func (segment *Segment) GetRdd(tx *hood.Hood) *Rdd {
+	var results []Rdd
+	err := tx.Where("id", "=", segment.RddId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find rdd with given id")
+	} else {
+		return &results[0]
+	}
+}
+
+func (protojob *Protojob) GetInputEdges(tx *hood.Hood) []*WorkflowEdge {
+	var results []WorkflowEdge
+	err := tx.Where("dest_protojob_id", "=", protojob.Id).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*WorkflowEdge, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func (protojob *Protojob) GetSourceProtojobs(tx *hood.Hood) []*Protojob {
+	var results []Protojob
+	err := tx.FindSql(&results,
+		`select *
+    from protojob
+    inner join edge
+    on edge.dest_job_id = protojob.id
+    inner join protojob source_job
+    on edge.source_job_id = source_job.id
+    where dest_job.id = $1`, protojob.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Protojob, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
+	var results []Rdd
+	err := tx.FindSql(&results,
+		`select *
+    from rdd
+    inner join edge
+    on edge.dest_rdd_id = rdd.id
+    inner join rdd source_rdd
+    on edge.source_rdd_id = source_rdd.id
+    where dest_rdd.id = $1`, rdd.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Rdd, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func (rdd *Rdd) GetNumSegmentsComplete(tx *hood.Hood) int {
+	var results []int
+	err := tx.FindSql(&results,
+		`select count(*)
+    from segment
+    where rdd_id = $1`, rdd.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	return results[0]
+}
+
+func (segment *Segment) GetWorker(tx *hood.Hood) *Worker {
+	var results []Worker
+	err := tx.Where("id", "=", segment.WorkerId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find worker for segment")
 	} else {
 		return &results[0]
 	}
