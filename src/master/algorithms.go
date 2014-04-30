@@ -42,3 +42,24 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int) *WorkflowBatch {
 
 	return batch
 }
+
+// Find the first Rdds that should be executed in a given batch.
+// Source Rdds don't have any inputs from other Rdds in the current batch.
+func (workflowBatch *WorkflowBatch) FindSourceRdds(hd *hood.Hood) []*Rdd {
+	edges := workflowBatch.GetNonDelayRddEdges(hd)
+	rdds := workflowBatch.GetRdds(hd)
+
+	dests := make(map[int64]bool)
+	for _, edge := range edges {
+		dests[edge.DestRddId] = true
+	}
+
+	output := make([]*Rdd, 0)
+	for _, rdd := range rdds {
+		if dests[int64(rdd.Id)] == false {
+			output = append(output, rdd)
+		}
+	}
+
+	return output
+}

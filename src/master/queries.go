@@ -45,7 +45,7 @@ func (workflow *Workflow) GetWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
 	err := tx.FindSql(&results,
 		`select *
     from workflow_edge
-    left join protojob dest_job
+    inner join protojob dest_job
     on workflow_edge.dest_job_id = dest_job.id
     where dest_job.workflow_id = $1`, workflow.Id)
 	if err != nil {
@@ -69,9 +69,35 @@ func (workflowBatch *WorkflowBatch) GetRddEdges(tx *hood.Hood) []*RddEdge {
 	err := tx.FindSql(&results,
 		`select *
     from rdd_edge
-    left join rdd dest_rdd
+    inner join rdd dest_rdd
     on rdd_edge.dest_rdd_id = dest_rdd.id
     where dest_rdd.workflow_batch_id = $1`, workflowBatch.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*RddEdge, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+// Same as GetRddEdges, except the edges cannot have any delay
+func (workflowBatch *WorkflowBatch) GetNonDelayRddEdges(tx *hood.Hood) []*RddEdge {
+	var results []RddEdge
+	err := tx.FindSql(&results,
+		`select *
+    from rdd_edge
+    inner join rdd dest_rdd
+    on rdd_edge.dest_rdd_id = dest_rdd.id
+    inner join workflow_edge
+    on workflow_edge.id = rdd_edge.workflow_edge_id
+    where dest_rdd.workflow_batch_id = $1
+    and workflow_edge.delay=0`, workflowBatch.Id)
 	if err != nil {
 		panic(err)
 	}

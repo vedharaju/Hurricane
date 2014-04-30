@@ -61,10 +61,11 @@ func MockSegment(hd *hood.Hood, rdd *Rdd, worker *Worker) *Segment {
 	return &s
 }
 
-func MockRddEdge(hd *hood.Hood, src *Rdd, dest *Rdd) *RddEdge {
+func MockRddEdge(hd *hood.Hood, src *Rdd, dest *Rdd, workflowEdge *WorkflowEdge) *RddEdge {
 	x := RddEdge{
-		SourceRddId: int64(src.Id),
-		DestRddId:   int64(dest.Id),
+		SourceRddId:    int64(src.Id),
+		DestRddId:      int64(dest.Id),
+		WorkflowEdgeId: int64(workflowEdge.Id),
 	}
 	saveOrPanic(hd, &x)
 	return &x
@@ -95,20 +96,20 @@ func MockDiamondWorkflow(hd *hood.Hood) *Workflow {
 	j2 := MockProtojob(hd, workflow)
 	j3 := MockProtojob(hd, workflow)
 	j4 := MockProtojob(hd, workflow)
-	MockWorkflowEdge(hd, j1, j2)
-	MockWorkflowEdge(hd, j1, j3)
-	MockWorkflowEdge(hd, j2, j4)
-	MockWorkflowEdge(hd, j3, j4)
+	e1 := MockWorkflowEdge(hd, j1, j2)
+	e2 := MockWorkflowEdge(hd, j1, j3)
+	e3 := MockWorkflowEdge(hd, j2, j4)
+	e4 := MockWorkflowEdge(hd, j3, j4)
 
 	workflowBatch := MockWorkflowBatch(hd, workflow)
 	rdd1 := MockRdd(hd, workflowBatch, j1)
 	rdd2 := MockRdd(hd, workflowBatch, j2)
 	rdd3 := MockRdd(hd, workflowBatch, j3)
 	rdd4 := MockRdd(hd, workflowBatch, j4)
-	MockRddEdge(hd, rdd1, rdd2)
-	MockRddEdge(hd, rdd1, rdd3)
-	MockRddEdge(hd, rdd2, rdd4)
-	MockRddEdge(hd, rdd3, rdd4)
+	MockRddEdge(hd, rdd1, rdd2, e1)
+	MockRddEdge(hd, rdd1, rdd3, e2)
+	MockRddEdge(hd, rdd2, rdd4, e3)
+	MockRddEdge(hd, rdd3, rdd4, e4)
 
 	w1 := MockWorker(hd)
 	w2 := MockWorker(hd)

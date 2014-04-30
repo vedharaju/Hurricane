@@ -39,3 +39,22 @@ func TestMakeBatch(t *testing.T) {
 		t.Fatalf("wrong start time; got=%d wanted=%d", wb.StartTime, 200)
 	}
 }
+
+func TestFindSourceRdds(t *testing.T) {
+	hd := GetTestDbConnection()
+	ResetDb(hd)
+	CreateTables(hd)
+
+	workflow := MockDiamondWorkflow(hd)
+
+	lastBatch := GetLastWorkflowBatch(hd, workflow)
+	if lastBatch == nil {
+		t.Fatalf("last batch not found")
+	}
+
+	rdds := lastBatch.FindSourceRdds(hd)
+
+	if len(rdds) != 1 {
+		t.Fatalf("wrong number of source rdds; got=%d wanted=%d", len(rdds), 1)
+	}
+}
