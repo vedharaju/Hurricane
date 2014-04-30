@@ -252,3 +252,17 @@ func (rdd *Rdd) GetProtojob(tx *hood.Hood) *Protojob {
 		return &results[0]
 	}
 }
+
+func GetWorkflow(tx *hood.Hood, workflowId int64) *Workflow {
+	var results []Workflow
+	err := tx.Where("id", "=", workflowId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find workflow with given id")
+	} else {
+		return &results[0]
+	}
+}

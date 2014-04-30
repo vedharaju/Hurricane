@@ -12,6 +12,9 @@ import "strings"
 
 const MAX_EVENTS = 10000
 
+// maximum clock error in milliseconds
+const TIME_ERROR = 100
+
 type Master struct {
 	numQueuedEvents int64
 	mu              sync.Mutex
@@ -84,9 +87,38 @@ func (m *Master) queueEvent(e Event) {
 
 func (m *Master) execNewBatch(workflowId int64) {
 	// look up workflow
+	workflow := GetWorkflow(m.hd, workflowId)
 	// create new workflowbatch
-	// generate RDDs for each job
-	// queue launch job events for first jobs
+	lastBatch := workflow.GetLastWorkflowBatch(m.hd)
+
+	now := int(time.Now().Unix())
+	if lastBatch == nil {
+		// if no last batch, then create the first batch right now - duration - time_eror
+		batch := workflow.MakeBatch(m.hd, now-workflow.Duration-TIME_ERROR)
+		m.launchBatchSourceJobs(batch)
+	} else {
+		// TODO: figure out what exactly to do if there are multiple
+		// batches to catch up on, or if it is not yet time to execute
+		// the next job
+
+		// for now, only launch a new batch if the proper time has arrived
+		// (eg. the end time of the new batch has definitely passed)
+		if now > lastBatch.StartTime+2*workflow.Duration+TIME_ERROR {
+			batch := workflow.MakeBatch(m.hd, lastBatch.StartTime+workflow.Duration)
+			m.launchBatchSourceJobs(batch)
+		}
+	}
+}
+
+func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
+	rdds := batch.FindSourceRdds(m.hd)
+	for _, rdd := range rdds {
+		e := Event{
+			Type: LAUNCH_JOB,
+			Id:   int64(rdd.Id),
+		}
+		m.queueEvent(e)
+	}
 }
 
 func (m *Master) execLaunchTask(segmentId int64) {

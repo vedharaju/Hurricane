@@ -31,6 +31,8 @@ func TestBasic(t *testing.T) {
 		t.Fatalf("incorrect number of segments; got=%d wanted=%d", len(results), 2)
 	}
 
+	GetWorkflow(hd, int64(workflow.Id))
+
 	fmt.Printf("  ... Passed\n")
 
 }
