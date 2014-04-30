@@ -13,6 +13,9 @@ type RddEdge struct {
 	SourceRddId int64
 	DestRddId   int64
 
+	// Reference to the WorkflowEdge used to create this
+	WorkflowEdgeId int64
+
 	// These fields are auto updated on save
 	Created hood.Created
 	Updated hood.Updated
@@ -21,6 +24,7 @@ type RddEdge struct {
 func (table *RddEdge) Indexes(indexes *hood.Indexes) {
 	indexes.Add("rdd_edge__source_rdd_id", "source_rdd_id")
 	indexes.Add("rdd_edge__dest_rdd_id", "dest_rdd_id")
+	indexes.Add("rdd_edge__workflow_edge_id", "workflow_edge_id")
 }
 
 // RDD and "Job" are stored in the same data structure because every
@@ -92,6 +96,9 @@ type WorkflowEdge struct {
 
 	// Delay of the input RDD. 0 means no delay
 	Delay int
+
+	// Index of the input for an RDD. 0 is the first input
+	Index int
 
 	// These fields are auto updated on save
 	Created hood.Created
