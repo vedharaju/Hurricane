@@ -147,6 +147,9 @@ func (m *Master) execLaunchTask(segmentId int64) {
 func (m *Master) execTaskSuccess(segmentId int64) {
 	tx := m.hd.Begin()
 
+	// TODO: must verify that all segments are on living nodes, otherwise
+	// must trigger re-computation of RDDs
+
 	segment := GetSegment(tx, segmentId)
 	rdd := segment.GetRdd(tx)
 	pj := rdd.GetProtojob(tx)
@@ -168,6 +171,9 @@ func (m *Master) execTaskSuccess(segmentId int64) {
 }
 
 func (m *Master) execTaskFailure(segmentId int64) {
+	// TODO: do something more sophisticated on failure to allow
+	// for recovery after worker failure (for example, if the task failed
+	// because of missing input segments)
 	e := Event{
 		Type: LAUNCH_TASK,
 		Id:   int64(segmentId),
