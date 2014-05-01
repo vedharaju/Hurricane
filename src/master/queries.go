@@ -347,12 +347,10 @@ func (protojob *Protojob) GetSourceProtojobs(tx *hood.Hood) []*Protojob {
 	var results []Protojob
 	err := tx.FindSql(&results,
 		`select *
-    from protojob
-    inner join edge
-    on edge.dest_job_id = protojob.id
+    from workflow_edge edge
     inner join protojob source_job
     on edge.source_job_id = source_job.id
-    where dest_job.id = $1`, protojob.Id)
+    where edge.dest_job_id = $1`, protojob.Id)
 	if err != nil {
 		panic(err)
 	}
@@ -371,12 +369,32 @@ func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.FindSql(&results,
 		`select *
-    from rdd
-    inner join edge
-    on edge.dest_rdd_id = rdd.id
+    from rdd_edge edge
     inner join rdd source_rdd
     on edge.source_rdd_id = source_rdd.id
-    where dest_rdd.id = $1`, rdd.Id)
+    where edge.dest_rdd_id = $1`, rdd.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Rdd, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
+func (rdd *Rdd) GetDestRdds(tx *hood.Hood) []*Rdd {
+	var results []Rdd
+	err := tx.FindSql(&results,
+		`select *
+    from rdd_edge edge
+    inner join rdd dest_rdd
+    on edge.dest_rdd_id = dest_rdd.id
+    where edge.source_rdd_id = $1`, rdd.Id)
 	if err != nil {
 		panic(err)
 	}

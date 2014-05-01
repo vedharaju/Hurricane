@@ -75,7 +75,7 @@ func (m *Master) eventLoop() {
 
 // Return the number of events in the event queue.
 // Should only be called from the EventLoop thread
-func (m *Master) numOutstandingEvents(e Event) int64 {
+func (m *Master) numOutstandingEvents() int64 {
 	return atomic.LoadInt64(&m.numQueuedEvents)
 }
 
@@ -200,10 +200,36 @@ func (m *Master) execLaunchJob(rddId int64) {
 }
 
 func (m *Master) execJobComplete(rddId int64) {
-	// if another job in workflow batch
-	// queue next task if RDDs available
-	// else
-	// finish
+	tx := m.hd.Begin()
+
+	rdd := GetRdd(tx, rddId)
+	destRdds := rdd.GetDestRdds(tx)
+
+	// For each destRdd, check whether all of the srcRdds
+	// for that destRdd are complete. If so, launch the job
+	// for destRdd
+	// TODO: this logic will have to be re-written when fault-tolerance
+	// is implemented
+	for _, destRdd := range destRdds {
+		srcRdds := destRdd.GetSourceRdds(tx)
+		isComplete := true
+		for _, srcRdd := range srcRdds {
+			pj := rdd.GetProtojob(tx)
+			numComplete := srcRdd.GetNumSegmentsComplete(tx)
+			if numComplete != pj.NumSegments {
+				isComplete = false
+			}
+		}
+		if isComplete {
+			e := Event{
+				Type: LAUNCH_JOB,
+				Id:   int64(destRdd.Id),
+			}
+			m.queueEvent(e)
+		}
+	}
+
+	commitOrPanic(tx)
 }
 
 //
@@ -244,6 +270,22 @@ func (m *Master) tick() {
 	// TODO: Clean dead servers
 
 	// TODO: Launch new batches
+	tx := m.hd.Begin()
+
+	// Don't launch new batches if the event queue is more than half full
+	if m.numOutstandingEvents() < MAX_EVENTS/2 {
+		workflows := GetWorkflows(tx)
+		// It's okay to spam the NEW_BATCH events, since extra ones are ignored
+		for _, workflow := range workflows {
+			e := Event{
+				Type: NEW_BATCH,
+				Id:   int64(workflow.Id),
+			}
+			m.queueEvent(e)
+		}
+	}
+
+	commitOrPanic(tx)
 }
 
 // tell the server to shut itself down.
