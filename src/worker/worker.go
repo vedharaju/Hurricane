@@ -8,8 +8,6 @@ import "log"
 import "master"
 import "strings"
 
-/*import "udf"*/
-
 type Worker struct {
 	mu     sync.Mutex
 	l      net.Listener
@@ -47,7 +45,7 @@ func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 		}
 	}
 
-	outputTuples := udf.runUDF(args.Command, inputTuples)
+	outputTuples := runUDF(args.Command, inputTuples)
 
 	w.segments[args.OutputSegmentId] = MakeSegment(outputTuples, args.Indices, args.Parts)
 
