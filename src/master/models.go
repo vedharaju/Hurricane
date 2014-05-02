@@ -131,7 +131,7 @@ type Protojob struct {
 	// Partition vector index, in the format (n1,n2,n3)
 	PartitionIndex string
 
-	// Number of segments in the output RDD
+	// Number of segments in the output RDD - same as the number of workers to be used
 	NumSegments int
 
 	// Number of partition buckets

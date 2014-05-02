@@ -1,13 +1,12 @@
 JOBS
 
-A: python errybody.py
-B: python who.py
-C: python test.py
-D: python you.py
-E: python me.py
-F: python hello.py
+A: python map.py \I ;; r=true & p=(1,3) & w=4 & b=20
+B: python map.py
+C: python map.py \S
+D: python map.py
+E: python map.py
+F: python map.py
 
 WORKFLOW
-
-A,B,C -> D
-E,D -> F
+A 2,B,C 3-> D
+E,D 1 -> F
