@@ -2,13 +2,14 @@ package client
 
 import "net/rpc"
 import "fmt"
-import "sync"
 import "time"
 
 const (
-	OK          = "OK"
-	RESET       = "RESET"
-	NO_RESPONSE = "NO_RESPONSE"
+	OK                = "OK"
+	RESET             = "RESET"
+	NO_RESPONSE       = "NO_RESPONSE"
+	DEAD_SEGMENT      = "DEAD_SEGMENT"
+	SEGMENT_NOT_FOUND = "SEGMENT_NOT_FOUND"
 )
 
 type Err string
@@ -31,8 +32,6 @@ type PingReply struct {
 }
 
 type MasterClerk struct {
-	mu sync.Mutex
-
 	// (host:port) information
 	master string
 	me     string
@@ -138,8 +137,6 @@ type ExecReply struct {
 }
 
 type WorkerClerk struct {
-	mu sync.Mutex
-
 	// (host:port) information
 	hostname string
 }

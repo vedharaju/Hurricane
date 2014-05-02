@@ -30,8 +30,13 @@ func (w *Worker) kill() {
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	fmt.Println("GET TUPLES RPC")
-	reply.Tuples = w.segments[args.SegmentId].Partitions[args.PartitionIndex]
-	reply.Err = client.OK
+	segment := w.segments[args.SegmentId]
+	if segment != nil {
+		reply.Tuples = segment.Partitions[args.PartitionIndex]
+		reply.Err = client.OK
+	} else {
+		reply.Err = client.SEGMENT_NOT_FOUND
+	}
 	return nil
 }
 
@@ -40,16 +45,21 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	fmt.Println("executing task", args)
 	for _, segment := range args.Segments {
 		fmt.Println("fetching segment", segment)
-		// TODO: put in retry loop
-		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
-		reply := GetTuplesReply{}
-		ok := client.CallRPC(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
-		if ok && reply.Err == client.OK {
-			fmt.Println("fetched tuples", len(reply.Tuples))
-			inputTuples = append(inputTuples, reply.Tuples...)
+		clerk := MakeWorkerInternalClerk(segment.WorkerUrl)
+		args2 := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
+		reply2 := clerk.GetTuples(&args2, 3)
+		if reply2 != nil {
+			if reply2.Err == client.OK {
+				fmt.Println("fetched tuples", len(reply2.Tuples))
+				inputTuples = append(inputTuples, reply2.Tuples...)
+			} else {
+				reply.Err = reply2.Err
+				fmt.Println(reply.Err)
+				return nil
+			}
 		} else {
-			fmt.Println("failed to fetch tuples")
-			reply.Err = "not okay"
+			reply.Err = client.DEAD_SEGMENT
+			fmt.Println(reply.Err)
 			return nil
 		}
 	}

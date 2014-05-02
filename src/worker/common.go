@@ -12,6 +12,28 @@ import "strings"
 import "client"
 import "path"
 
+type WorkerInternalClerk struct {
+	// (host:port) information
+	hostname string
+}
+
+func MakeWorkerInternalClerk(hostname string) *WorkerInternalClerk {
+	ck := new(WorkerInternalClerk)
+	ck.hostname = hostname
+	return ck
+}
+
+func (ck *WorkerInternalClerk) GetTuples(args *GetTuplesArgs, numRetries int) *GetTuplesReply {
+	for i := 0; i < numRetries; i++ {
+		reply := GetTuplesReply{}
+		ok := client.CallRPC(ck.hostname, "Worker.GetTuples", &args, &reply)
+		if ok {
+			return &reply
+		}
+	}
+	return nil
+}
+
 type GetTuplesArgs struct {
 	SegmentId      int64
 	PartitionIndex int
