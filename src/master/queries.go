@@ -4,6 +4,10 @@ import (
 	"github.com/eaigner/hood"
 )
 
+type IntStruct struct {
+	Value int
+}
+
 func (rdd *Rdd) GetSegments(tx *hood.Hood) []*Segment {
 	var results []Segment
 	err := tx.Where("rdd_id", "=", rdd.Id).Find(&results)
@@ -328,7 +332,7 @@ func (segment *Segment) GetRdd(tx *hood.Hood) *Rdd {
 
 func (protojob *Protojob) GetInputEdges(tx *hood.Hood) []*WorkflowEdge {
 	var results []WorkflowEdge
-	err := tx.Where("dest_protojob_id", "=", protojob.Id).Find(&results)
+	err := tx.Where("dest_job_id", "=", protojob.Id).Find(&results)
 	if err != nil {
 		panic(err)
 	}
@@ -346,11 +350,11 @@ func (protojob *Protojob) GetInputEdges(tx *hood.Hood) []*WorkflowEdge {
 func (protojob *Protojob) GetSourceProtojobs(tx *hood.Hood) []*Protojob {
 	var results []Protojob
 	err := tx.FindSql(&results,
-		`select workflow_edge.*
-    from workflow_edge edge
+		`select source_job.*
+    from workflow_edge
     inner join protojob source_job
-    on edge.source_job_id = source_job.id
-    where edge.dest_job_id = $1`, protojob.Id)
+    on workflow_edge.source_job_id = source_job.id
+    where workflow_edge.dest_job_id = $1`, protojob.Id)
 	if err != nil {
 		panic(err)
 	}
@@ -368,11 +372,11 @@ func (protojob *Protojob) GetSourceProtojobs(tx *hood.Hood) []*Protojob {
 func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.FindSql(&results,
-		`select rdd_edge.*
-    from rdd_edge edge
+		`select source_rdd.*
+    from rdd_edge
     inner join rdd source_rdd
-    on edge.source_rdd_id = source_rdd.id
-    where edge.dest_rdd_id = $1`, rdd.Id)
+    on rdd_edge.source_rdd_id = source_rdd.id
+    where rdd_edge.dest_rdd_id = $1`, rdd.Id)
 	if err != nil {
 		panic(err)
 	}
@@ -390,11 +394,11 @@ func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
 func (rdd *Rdd) GetDestRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.FindSql(&results,
-		`select rdd_edge.*
-    from rdd_edge edge
+		`select dest_rdd.*
+    from rdd_edge
     inner join rdd dest_rdd
-    on edge.dest_rdd_id = dest_rdd.id
-    where edge.source_rdd_id = $1`, rdd.Id)
+    on rdd_edge.dest_rdd_id = dest_rdd.id
+    where rdd_edge.source_rdd_id = $1`, rdd.Id)
 	if err != nil {
 		panic(err)
 	}
@@ -410,16 +414,17 @@ func (rdd *Rdd) GetDestRdds(tx *hood.Hood) []*Rdd {
 }
 
 func (rdd *Rdd) GetNumSegmentsComplete(tx *hood.Hood) int {
-	var results []int
+	var results []IntStruct
 	err := tx.FindSql(&results,
-		`select count(*)
+		`select count(*) as value
     from segment
-    where rdd_id = $1`, rdd.Id)
+    where rdd_id = $1
+    and status=1`, rdd.Id)
 	if err != nil {
 		panic(err)
 	}
 
-	return results[0]
+	return results[0].Value
 }
 
 func (segment *Segment) GetWorker(tx *hood.Hood) *Worker {
@@ -434,4 +439,17 @@ func (segment *Segment) GetWorker(tx *hood.Hood) *Worker {
 	} else {
 		return &results[0]
 	}
+}
+
+func GetNumAliveWorkers(tx *hood.Hood) int {
+	var results []IntStruct
+	err := tx.FindSql(&results,
+		`select count(*) as value
+    from worker
+    where dead=0`)
+	if err != nil {
+		panic(err)
+	}
+
+	return results[0].Value
 }

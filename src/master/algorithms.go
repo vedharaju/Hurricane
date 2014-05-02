@@ -153,8 +153,8 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*SegmentInput {
 					input := &SegmentInput{
 						SegmentId:      int64(sourceSegment.Id),
 						PartitionIndex: i,
-						WorkerUrl:      workerMap[sourceSegment.WorkerId].Url,
-						Index:          inputWorkflowEdge.Index,
+						//WorkerUrl:      workerMap[sourceSegment.WorkerId].Url,
+						Index: inputWorkflowEdge.Index,
 					}
 					output = append(output, input)
 				}

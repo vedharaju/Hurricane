@@ -17,6 +17,7 @@ const TIME_ERROR = 100
 
 type Master struct {
 	numQueuedEvents int64
+	numAliveWorkers int64
 	mu              sync.Mutex
 	l               net.Listener
 	me              int
@@ -53,22 +54,32 @@ func (m *Master) Ping(args *PingArgs, reply *PingReply) error {
 }
 
 func (m *Master) eventLoop() {
+	to := 1
 	for {
-		e := <-m.events
-		atomic.AddInt64(&m.numQueuedEvents, -1)
-		switch e.Type {
-		case NEW_BATCH:
-			m.execNewBatch(e.Id)
-		case LAUNCH_TASK:
-			m.execLaunchTask(e.Id)
-		case TASK_SUCCESS:
-			m.execTaskSuccess(e.Id)
-		case TASK_FAILURE:
-			m.execTaskFailure(e.Id)
-		case LAUNCH_JOB:
-			m.execLaunchJob(e.Id)
-		case JOB_COMPLETE:
-			m.execJobComplete(e.Id)
+		if atomic.LoadInt64(&m.numAliveWorkers) > 0 {
+			to = 1
+			e := <-m.events
+			atomic.AddInt64(&m.numQueuedEvents, -1)
+			switch e.Type {
+			case NEW_BATCH:
+				m.execNewBatch(e.Id)
+			case LAUNCH_TASK:
+				m.execLaunchTask(e.Id)
+			case TASK_SUCCESS:
+				m.execTaskSuccess(e.Id)
+			case TASK_FAILURE:
+				m.execTaskFailure(e.Id)
+			case LAUNCH_JOB:
+				m.execLaunchJob(e.Id)
+			case JOB_COMPLETE:
+				m.execJobComplete(e.Id)
+			}
+		} else {
+			fmt.Println("sleeping", to)
+			time.Sleep(time.Duration(to) * time.Millisecond)
+			if to < 1000 {
+				to *= 2
+			}
 		}
 	}
 }
@@ -86,6 +97,7 @@ func (m *Master) queueEvent(e Event) {
 }
 
 func (m *Master) execNewBatch(workflowId int64) {
+	fmt.Println("execNewBatch", workflowId)
 	tx := m.hd.Begin()
 
 	// look up workflow
@@ -128,6 +140,7 @@ func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
 }
 
 func (m *Master) execLaunchTask(segmentId int64) {
+	fmt.Println("execLaunchTask", segmentId)
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
@@ -135,7 +148,7 @@ func (m *Master) execLaunchTask(segmentId int64) {
 
 	// TODO: implement the RPC call
 	go func() {
-		fmt.Println(inputs)
+		fmt.Println("task inputs", inputs)
 		e := Event{
 			Type: TASK_SUCCESS,
 			Id:   segmentId,
@@ -147,6 +160,7 @@ func (m *Master) execLaunchTask(segmentId int64) {
 }
 
 func (m *Master) execTaskSuccess(segmentId int64) {
+	fmt.Println("execTaskSuccess", segmentId)
 	tx := m.hd.Begin()
 
 	// TODO: must verify that all segments are on living nodes, otherwise
@@ -158,8 +172,11 @@ func (m *Master) execTaskSuccess(segmentId int64) {
 
 	segment.Status = SEGMENT_COMPLETE
 	saveOrPanic(tx, segment)
+	commitOrPanic(tx)
 
+	tx = m.hd.Begin()
 	numComplete := rdd.GetNumSegmentsComplete(tx)
+	commitOrPanic(tx)
 
 	if numComplete == pj.NumSegments {
 		e := Event{
@@ -168,11 +185,10 @@ func (m *Master) execTaskSuccess(segmentId int64) {
 		}
 		m.queueEvent(e)
 	}
-
-	commitOrPanic(tx)
 }
 
 func (m *Master) execTaskFailure(segmentId int64) {
+	fmt.Println("execTaskFailure", segmentId)
 	// TODO: do something more sophisticated on failure to allow
 	// for recovery after worker failure (for example, if the task failed
 	// because of missing input segments)
@@ -184,12 +200,16 @@ func (m *Master) execTaskFailure(segmentId int64) {
 }
 
 func (m *Master) execLaunchJob(rddId int64) {
+	fmt.Println("execLaunchJob", rddId)
 	tx := m.hd.Begin()
 
 	// TODO: check that all of the input RDDS are available
 
 	rdd := GetRdd(tx, rddId)
 	segments := rdd.CreateSegments(tx)
+
+	commitOrPanic(tx)
+
 	for _, segment := range segments {
 		e := Event{
 			Type: LAUNCH_TASK,
@@ -197,11 +217,10 @@ func (m *Master) execLaunchJob(rddId int64) {
 		}
 		m.queueEvent(e)
 	}
-
-	commitOrPanic(tx)
 }
 
 func (m *Master) execJobComplete(rddId int64) {
+	fmt.Println("execJobComplete", rddId)
 	tx := m.hd.Begin()
 
 	rdd := GetRdd(tx, rddId)
@@ -216,7 +235,7 @@ func (m *Master) execJobComplete(rddId int64) {
 		srcRdds := destRdd.GetSourceRdds(tx)
 		isComplete := true
 		for _, srcRdd := range srcRdds {
-			pj := rdd.GetProtojob(tx)
+			pj := srcRdd.GetProtojob(tx)
 			numComplete := srcRdd.GetNumSegmentsComplete(tx)
 			if numComplete != pj.NumSegments {
 				isComplete = false
@@ -238,7 +257,7 @@ func (m *Master) execJobComplete(rddId int64) {
 // server Register RPC handler.
 //
 func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
-	fmt.Println("Registering", args.Me)
+	fmt.Println("Registering", args)
 
 	tx := m.hd.Begin()
 	existingWorkers := GetWorkersAtAddress(tx, args.Me)
@@ -252,10 +271,18 @@ func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 	tx.Save(&newWorker)
 	commitOrPanic(tx)
 
+	m.getNumAliveWorkers()
+
 	reply.Err = OK
 	reply.Id = int64(newWorker.Id)
 
 	return nil
+}
+
+func (m *Master) getNumAliveWorkers() {
+	tx := m.hd.Begin()
+	atomic.StoreInt64(&m.numAliveWorkers, int64(GetNumAliveWorkers(tx)))
+	commitOrPanic(tx)
 }
 
 //
