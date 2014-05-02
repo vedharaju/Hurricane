@@ -13,7 +13,7 @@ type Worker struct {
 	l      net.Listener
 	master *client.MasterClerk
 
-	segments map[int64]Segment
+	segments map[int64]*Segment
 }
 
 func (w *Worker) Ping(args *client.PingArgs, reply *client.PingReply) error {
@@ -36,7 +36,9 @@ func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 
 func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error {
 	var inputTuples []Tuple
+	fmt.Println("executing task", args)
 	for _, segment := range args.Segments {
+		fmt.Println("fetching segment", segment)
 		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 		reply := GetTuplesReply{}
 		ok := client.CallRPC(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
@@ -45,10 +47,13 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 		}
 	}
 
+	fmt.Println("running udf")
 	outputTuples := runUDF(args.Command, inputTuples)
 
+	fmt.Println("writing segment")
 	w.segments[args.OutputSegmentId] = MakeSegment(outputTuples, args.Indices, args.Parts)
 
+	fmt.Println("success")
 	reply.Err = client.OK
 	return nil
 }
@@ -61,6 +66,7 @@ func StartServer(hostname string, masterhost string) *Worker {
 	fmt.Println("Starting worker")
 	worker := new(Worker)
 	worker.master = client.MakeMasterClerk(hostname, masterhost)
+	worker.segments = make(map[int64]*Segment)
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
@@ -74,11 +80,13 @@ func StartServer(hostname string, masterhost string) *Worker {
 	worker.l = l
 
 	go func() {
-		if conn, err := worker.l.Accept(); err == nil {
-			go rpcs.ServeConn(conn)
-		} else {
-			fmt.Printf("Worker(%s) accept: %v\n", hostname, err.Error())
-			worker.kill()
+		for {
+			if conn, err := worker.l.Accept(); err == nil {
+				go rpcs.ServeConn(conn)
+			} else {
+				fmt.Printf("Worker(%s) accept: %v\n", hostname, err.Error())
+				worker.kill()
+			}
 		}
 	}()
 

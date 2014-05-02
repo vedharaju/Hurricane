@@ -456,7 +456,12 @@ func GetNumAliveWorkers(tx *hood.Hood) int {
 
 func GetRandomAliveWorker(tx *hood.Hood) *Worker {
 	var results []Worker
-	err := tx.Where("dead", "=", false).OrderBy("?").Limit(1).Find(&results)
+	err := tx.FindSql(&results,
+		`select *
+    from worker
+    where dead = false
+    order by random()
+    limit 1`)
 	if err != nil {
 		panic(err)
 	}

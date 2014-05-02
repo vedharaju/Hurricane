@@ -21,6 +21,7 @@ func waitForInterrupt() {
 
 func main() {
 	if len(os.Args) != 3 {
+		printUsage()
 		return
 	}
 

@@ -98,7 +98,7 @@ type Segment struct {
 	Partitions [][]Tuple
 }
 
-func MakeSegment(tuples []Tuple, indices []int, parts int) Segment {
+func MakeSegment(tuples []Tuple, indices []int, parts int) *Segment {
 	var segment Segment
 	segment.Partitions = make([][]Tuple, parts)
 
@@ -111,7 +111,7 @@ func MakeSegment(tuples []Tuple, indices []int, parts int) Segment {
 		partition := TupleToPartition(tuple, indices, parts)
 		segment.Partitions[partition] = append(segment.Partitions[partition], tuple)
 	}
-	return segment
+	return &segment
 }
 
 // Execute a UDF command that accepts zero or more input lists of tuples, and

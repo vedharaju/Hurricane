@@ -144,13 +144,12 @@ func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
 func parseIndex(s string) []int {
 	s2 := strings.Trim(s, "()")
 	splits := strings.Split(s2, ",")
-	ints := make([]int, len(splits))
-	for i := range splits {
-		output, err := strconv.Atoi(splits[i])
-		if err != nil {
-			panic(err)
+	ints := make([]int, 0)
+	for _, split := range splits {
+		output, err := strconv.Atoi(split)
+		if err == nil {
+			ints = append(ints, output)
 		}
-		ints[i] = output
 	}
 	return ints
 }
@@ -173,7 +172,9 @@ func (m *Master) execLaunchTask(segmentId int64) {
 
 	if segment.WorkerId != 0 {
 		// if a worker was availble, launch the task
+		tx = m.hd.Begin()
 		inputs := segment.CalculateInputSegments(tx)
+		commitOrPanic(tx)
 
 		args := &client.ExecArgs{
 			Command:         pj.Command,
