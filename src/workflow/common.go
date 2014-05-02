@@ -27,64 +27,63 @@ func saveOrPanic(hd *hood.Hood, x interface{}) {
 }
 
 func parseCommand(command string) (string, map[string]string, error) {
-        r_doublesemi, _ := regexp.Compile("\\s*;;\\s*")
-        r_amp, _ := regexp.Compile("\\s*&\\s*")
-        r_eq, _ := regexp.Compile("\\s*=\\s*")
+	r_doublesemi, _ := regexp.Compile("\\s*;;\\s*")
+	r_amp, _ := regexp.Compile("\\s*&\\s*")
+	r_eq, _ := regexp.Compile("\\s*=\\s*")
 
-        args := r_doublesemi.Split(strings.TrimSpace(command), 2)
-        cmd := args[0]
+	args := r_doublesemi.Split(strings.TrimSpace(command), 2)
+	cmd := args[0]
 
-        cmd_args := make(map[string]string)
-        if len(args) == 2 {
-          args_separated := r_amp.Split(strings.TrimSpace(args[1]), -1)
-          for _,element := range args_separated {
-            key_arg := r_eq.Split(strings.TrimSpace(element), 2)
-            if len(key_arg) == 2 {
-              cmd_args[strings.TrimSpace(key_arg[0])] = strings.TrimSpace(key_arg[1])
-            } else {
-              // TODO: figure out if error needs to be thrown
-            }
-          }
-        }
-        return cmd, cmd_args, nil
+	cmd_args := make(map[string]string)
+	if len(args) == 2 {
+		args_separated := r_amp.Split(strings.TrimSpace(args[1]), -1)
+		for _, element := range args_separated {
+			key_arg := r_eq.Split(strings.TrimSpace(element), 2)
+			if len(key_arg) == 2 {
+				cmd_args[strings.TrimSpace(key_arg[0])] = strings.TrimSpace(key_arg[1])
+			} else {
+				// TODO: figure out if error needs to be thrown
+			}
+		}
+	}
+	return cmd, cmd_args, nil
 }
 
 func makeProtoJob(hd *hood.Hood, workflow *master.Workflow, command string) *master.Protojob {
-       //TODO: error handling 
-        cmd, args, _ := parseCommand(command) //TODO: handle error from parseCommand
+	//TODO: error handling
+	cmd, args, _ := parseCommand(command) //TODO: handle error from parseCommand
 	job := master.Protojob{
 		Command:    cmd,
 		WorkflowId: int64(workflow.Id),
 	}
-         
-        for k, v := range args {
-          if k == "r" {
-            if v=="true" {
-              job.IsReduce = true
-            } else if v=="false" {
-              job.IsReduce = false
-            } else {
-              // TODO: error incorrect value
-            }
-          } else if k == "p" {
-            job.PartitionIndex = v
-          } else if k == "w" {
-            num, err := strconv.ParseInt(v, 10, 0)
-            if err == nil {
-              job.NumSegments = int(num)
-            } else {
-              //TODO: throw error
-            }
-          } else if k == "b" {
-            num, err := strconv.ParseInt(v, 10, 0)
-            if err == nil {
-              job.NumBuckets = int(num)
-            } else {
-              //TODO: throw error
-            }
-          }
-        }
 
+	for k, v := range args {
+		if k == "r" {
+			if v == "true" {
+				job.IsReduce = true
+			} else if v == "false" {
+				job.IsReduce = false
+			} else {
+				// TODO: error incorrect value
+			}
+		} else if k == "p" {
+			job.PartitionIndex = v
+		} else if k == "w" {
+			num, err := strconv.ParseInt(v, 10, 0)
+			if err == nil {
+				job.NumSegments = int(num)
+			} else {
+				//TODO: throw error
+			}
+		} else if k == "b" {
+			num, err := strconv.ParseInt(v, 10, 0)
+			if err == nil {
+				job.NumBuckets = int(num)
+			} else {
+				//TODO: throw error
+			}
+		}
+	}
 
 	saveOrPanic(hd, &job)
 	return &job
@@ -100,7 +99,7 @@ func makeWorkflowEdge(hd *hood.Hood, src int64, dest int64, delay int) *master.W
 	edge := master.WorkflowEdge{
 		SourceJobId: src,
 		DestJobId:   dest,
-                Delay: delay, 
+		Delay:       delay,
 	}
 	saveOrPanic(hd, &edge)
 	return &edge
@@ -115,7 +114,7 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 	r_jobChar, _ := regexp.Compile("\\s*:\\s*")
 	r_workflowChar, _ := regexp.Compile("\\s*->\\s*")
 	r_comma, _ := regexp.Compile("\\s*,\\s*")
-        r_whitespace, _ := regexp.Compile("\\s+")
+	r_whitespace, _ := regexp.Compile("\\s+")
 
 	workflow := makeWorkflow(hd)
 	jobIds := make(map[string]int64)
@@ -155,14 +154,14 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 
 				from := r_comma.Split(strings.TrimSpace(split[0]), -1)
 				for _, fromJob := range from {
-                                        fromInfo := r_whitespace.Split(strings.TrimSpace(fromJob), 2)
+					fromInfo := r_whitespace.Split(strings.TrimSpace(fromJob), 2)
 					fromId, ok := jobIds[strings.TrimSpace(fromInfo[0])]
-                                        
-                                        var fromDelay int64
-                                        //var err error
-                                        if len(fromInfo) == 2 {
-                                          fromDelay, _  = strconv.ParseInt(fromInfo[1], 10, 0) //TODO: handle error
-                                        }
+
+					var fromDelay int64
+					//var err error
+					if len(fromInfo) == 2 {
+						fromDelay, _ = strconv.ParseInt(fromInfo[1], 10, 0) //TODO: handle error
+					}
 
 					if ok {
 						makeWorkflowEdge(hd, fromId, toId, int(fromDelay))

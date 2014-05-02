@@ -87,7 +87,7 @@ func (ck *MasterClerk) Ping(retry bool) Err {
 
 		// exponential backoff
 		time.Sleep(to)
-		if to < 10*time.Second {
+		if to < 1*time.Second {
 			to *= 2
 		}
 	}
@@ -112,7 +112,7 @@ func (ck *MasterClerk) Register(retry bool) int64 {
 
 		// exponential backoff
 		time.Sleep(to)
-		if to < 10*time.Second {
+		if to < 1*time.Second {
 			to *= 2
 		}
 	}

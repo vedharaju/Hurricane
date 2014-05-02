@@ -93,7 +93,7 @@ func TupleToPartition(tuple Tuple, indices []int, parts int) int {
 
 	h := fnv.New32()
 	io.WriteString(h, buffer.String())
-	return int(h.Sum32()) % parts
+	return int(h.Sum32() % uint32(parts))
 }
 
 type Segment struct {

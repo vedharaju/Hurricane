@@ -1,8 +1,8 @@
 JOBS
 
 A: go run @/src/demo/wordcount_go/wordcount_input.go ;; r=true & p=(0) & w=1 & b=1
-B: go run @/src/demo/wordcount_go/wordcount_map.go ;; r=true & p=(0) & w=1 & b=1
-C: go run @/src/demo/wordcount_go/wordcount_reduce.go ;; r=true & p=(0) & w=1 & b=1
+B: go run @/src/demo/wordcount_go/wordcount_map.go ;; r=true & p=(0) & w=1 & b=10
+C: go run @/src/demo/wordcount_go/wordcount_reduce.go ;; r=true & p=(0) & w=2 & b=1
 D: go run @/src/demo/wordcount_go/wordcount_output.go ;; r=true & p=(0) & w=1 & b=1
 
 WORKFLOW
