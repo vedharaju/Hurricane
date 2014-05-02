@@ -26,6 +26,33 @@ func (w *Worker) kill() {
 	w.l.Close()
 }
 
+func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) {
+
+}
+
+func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
+	var inputTuples []Tuple
+	for segment := range args.Segments {
+		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex, Index: segment.Index}
+		reply := GetTuplesReply{}
+		ok := call(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
+		if ok && reply.Err == OK {
+			inputTuples.append(reply.Tuples)
+		}
+	}
+
+	outputTuples := runUDF(args.Command, inputTuples)
+
+	for {
+		ok := call(worker.master, "Master.execTaskSuccess", &args, &reply)
+		if ok && reply.Err == OK {
+			break
+		}
+		// TODO: Sleep here for some time
+	}
+
+}
+
 // call() sends an RPC to the rpcname handler on server srv
 // with arguments args, waits for the reply, and leaves the
 // reply in reply. the reply argument should be a pointer
