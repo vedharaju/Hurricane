@@ -8,6 +8,8 @@ import "log"
 import "master"
 import "strings"
 
+/*import "udf"*/
+
 type Worker struct {
 	mu     sync.Mutex
 	l      net.Listener
@@ -28,25 +30,26 @@ func (w *Worker) kill() {
 	w.l.Close()
 }
 
-func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) {
+func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	reply.Tuples = w.segments[args.SegmentId].Partitions[args.PartitionIndex]
+	reply.Err = OK
 	return nil
 }
 
 func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 	var inputTuples []Tuple
-	for segment := range args.Segments {
+	for _, segment := range args.Segments {
 		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 		reply := GetTuplesReply{}
 		ok := call(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
 		if ok && reply.Err == OK {
-			inputTuples.append(reply.Tuples)
+			inputTuples = append(inputTuples, reply.Tuples...)
 		}
 	}
 
-	outputTuples := runUDF(args.Command, inputTuples)
+	outputTuples := udf.runUDF(args.Command, inputTuples)
 
-	w.segment[outputSegmenId] = MakeSegment(outputTuples, args.Indices, args.Parts)
+	w.segments[args.OutputSegmentId] = MakeSegment(outputTuples, args.Indices, args.Parts)
 
 	reply.Err = OK
 	return nil

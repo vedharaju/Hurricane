@@ -1,7 +1,6 @@
 package worker
 
-import "sync"
-import "master/algorithms"
+import "master"
 
 const (
 	OK = "OK"
@@ -23,15 +22,17 @@ type GetTuplesArgs struct {
 
 type GetTuplesReply struct {
 	Tuples []Tuple
+	Err    Err
 }
 
 type ExecArgs struct {
 	Command         string
-	Segments        []algorithms.SegmentInput
+	Segments        []master.SegmentInput
 	OutputSegmentId int64
 	Indices         []int
 	Parts           int
 }
 
 type ExecReply struct {
+	Err Err
 }
