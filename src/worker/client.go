@@ -19,7 +19,6 @@ type PingReply struct {
 type GetTuplesArgs struct {
 	SegmentId      int64
 	PartitionIndex int
-	Index          int
 }
 
 type GetTuplesReply struct {

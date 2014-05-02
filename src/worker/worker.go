@@ -12,6 +12,8 @@ type Worker struct {
 	mu     sync.Mutex
 	l      net.Listener
 	master string
+
+	segments map[int64]Segment
 }
 
 func (w *Worker) Ping(args *PingArgs, reply *PingReply) error {
@@ -27,13 +29,14 @@ func (w *Worker) kill() {
 }
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) {
-
+	reply.Tuples := w.segments[args.SegmentId].Partitions[args.PartitionIndex]
+	return nil
 }
 
 func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 	var inputTuples []Tuple
 	for segment := range args.Segments {
-		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex, Index: segment.Index}
+		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 		reply := GetTuplesReply{}
 		ok := call(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
 		if ok && reply.Err == OK {
@@ -44,6 +47,7 @@ func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 	outputTuples := runUDF(args.Command, inputTuples)
 
 	for {
+		// TODO: fix this to update master of finished task (should be different rpc)
 		ok := call(worker.master, "Master.execTaskSuccess", &args, &reply)
 		if ok && reply.Err == OK {
 			break
@@ -51,6 +55,7 @@ func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 		// TODO: Sleep here for some time
 	}
 
+	return nil
 }
 
 // call() sends an RPC to the rpcname handler on server srv
