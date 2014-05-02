@@ -36,10 +36,19 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int) *WorkflowBatch {
 	// Create edges
 	for _, workflowEdge := range workflow.GetWorkflowEdges(hd) {
 		// Source rdd might be delayed
-		source_rdd := GetRddByStartTime(hd, workflowEdge.SourceJobId, start-workflowEdge.Delay*workflow.Duration)
-		if source_rdd != nil {
+		if workflowEdge.Delay > 0 {
+			source_rdd := GetRddByStartTime(hd, workflowEdge.SourceJobId, start-workflowEdge.Delay*workflow.Duration)
+			if source_rdd != nil {
+				rddEdge := &RddEdge{
+					SourceRddId:    int64(source_rdd.Id),
+					DestRddId:      pjToRdd[workflowEdge.DestJobId],
+					WorkflowEdgeId: int64(workflowEdge.Id),
+				}
+				saveOrPanic(hd, rddEdge)
+			}
+		} else {
 			rddEdge := &RddEdge{
-				SourceRddId:    int64(source_rdd.Id),
+				SourceRddId:    pjToRdd[workflowEdge.SourceJobId],
 				DestRddId:      pjToRdd[workflowEdge.DestJobId],
 				WorkflowEdgeId: int64(workflowEdge.Id),
 			}

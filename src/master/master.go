@@ -94,10 +94,10 @@ func (m *Master) execNewBatch(workflowId int64) {
 	lastBatch := workflow.GetLastWorkflowBatch(tx)
 
 	now := int(time.Now().Unix())
+	var batch *WorkflowBatch
 	if lastBatch == nil {
 		// if no last batch, then create the first batch right now - duration - time_eror
-		batch := workflow.MakeBatch(tx, now-workflow.Duration-TIME_ERROR)
-		m.launchBatchSourceJobs(batch)
+		batch = workflow.MakeBatch(tx, now-workflow.Duration-TIME_ERROR)
 	} else {
 		// TODO: figure out what exactly to do if there are multiple
 		// batches to catch up on, or if it is not yet time to execute
@@ -106,12 +106,14 @@ func (m *Master) execNewBatch(workflowId int64) {
 		// for now, only launch a new batch if the proper time has arrived
 		// (eg. the end time of the new batch has definitely passed)
 		if now > lastBatch.StartTime+2*workflow.Duration+TIME_ERROR {
-			batch := workflow.MakeBatch(tx, lastBatch.StartTime+workflow.Duration)
-			m.launchBatchSourceJobs(batch)
+			batch = workflow.MakeBatch(tx, lastBatch.StartTime+workflow.Duration)
 		}
 	}
-
 	commitOrPanic(tx)
+
+	if batch != nil {
+		m.launchBatchSourceJobs(batch)
+	}
 }
 
 func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
@@ -331,8 +333,10 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 
 	// create a thread to call tick() periodically.
 	go func() {
-		master.tick()
-		time.Sleep(TickInterval)
+		for {
+			master.tick()
+			time.Sleep(TickInterval)
+		}
 	}()
 
 	return master

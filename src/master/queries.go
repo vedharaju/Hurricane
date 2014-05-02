@@ -43,7 +43,7 @@ func (workflow *Workflow) GetProtojobs(tx *hood.Hood) []*Protojob {
 func (workflow *Workflow) GetWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
 	var results []WorkflowEdge
 	err := tx.FindSql(&results,
-		`select *
+		`select workflow_edge.*
     from workflow_edge
     inner join protojob dest_job
     on workflow_edge.dest_job_id = dest_job.id
@@ -67,7 +67,7 @@ func (workflow *Workflow) GetWorkflowEdges(tx *hood.Hood) []*WorkflowEdge {
 func (workflowBatch *WorkflowBatch) GetRddEdges(tx *hood.Hood) []*RddEdge {
 	var results []RddEdge
 	err := tx.FindSql(&results,
-		`select *
+		`select rdd_edge.*
     from rdd_edge
     inner join rdd dest_rdd
     on rdd_edge.dest_rdd_id = dest_rdd.id
@@ -90,7 +90,7 @@ func (workflowBatch *WorkflowBatch) GetRddEdges(tx *hood.Hood) []*RddEdge {
 func (workflowBatch *WorkflowBatch) GetNonDelayRddEdges(tx *hood.Hood) []*RddEdge {
 	var results []RddEdge
 	err := tx.FindSql(&results,
-		`select *
+		`select rdd_edge.*
     from rdd_edge
     inner join rdd dest_rdd
     on rdd_edge.dest_rdd_id = dest_rdd.id
@@ -346,7 +346,7 @@ func (protojob *Protojob) GetInputEdges(tx *hood.Hood) []*WorkflowEdge {
 func (protojob *Protojob) GetSourceProtojobs(tx *hood.Hood) []*Protojob {
 	var results []Protojob
 	err := tx.FindSql(&results,
-		`select *
+		`select workflow_edge.*
     from workflow_edge edge
     inner join protojob source_job
     on edge.source_job_id = source_job.id
@@ -368,7 +368,7 @@ func (protojob *Protojob) GetSourceProtojobs(tx *hood.Hood) []*Protojob {
 func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.FindSql(&results,
-		`select *
+		`select rdd_edge.*
     from rdd_edge edge
     inner join rdd source_rdd
     on edge.source_rdd_id = source_rdd.id
@@ -390,7 +390,7 @@ func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
 func (rdd *Rdd) GetDestRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.FindSql(&results,
-		`select *
+		`select rdd_edge.*
     from rdd_edge edge
     inner join rdd dest_rdd
     on edge.dest_rdd_id = dest_rdd.id
