@@ -127,7 +127,7 @@ type SegmentInput struct {
 
 type ExecArgs struct {
 	Command         string
-	Segments        []SegmentInput
+	Segments        []*SegmentInput
 	OutputSegmentId int64
 	Indices         []int
 	Parts           int
@@ -135,4 +135,27 @@ type ExecArgs struct {
 
 type ExecReply struct {
 	Err Err
+}
+
+type WorkerClerk struct {
+	mu sync.Mutex
+
+	// (host:port) information
+	hostname string
+}
+
+func MakeWorkerClerk(hostname string) *WorkerClerk {
+	ck := new(WorkerClerk)
+
+	ck.hostname = hostname
+
+	return ck
+}
+
+// no retry loop
+func (ck *WorkerClerk) ExecTask(args *ExecArgs) bool {
+	reply := ExecReply{}
+	ok := CallRPC(ck.hostname, "Worker.ExecTask", &args, &reply)
+
+	return ok && reply.Err == OK
 }

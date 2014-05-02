@@ -10,6 +10,7 @@ import "log"
 import "github.com/eaigner/hood"
 import "strings"
 import "client"
+import "strconv"
 
 const MAX_EVENTS = 10000
 
@@ -140,11 +141,27 @@ func (m *Master) launchBatchSourceJobs(batch *WorkflowBatch) {
 	}
 }
 
+func parseIndex(s string) []int {
+	s2 := strings.Trim(s, "()")
+	splits := strings.Split(s2, ",")
+	ints := make([]int, len(splits))
+	for i := range splits {
+		output, err := strconv.Atoi(splits[i])
+		if err != nil {
+			panic(err)
+		}
+		ints[i] = output
+	}
+	return ints
+}
+
 func (m *Master) execLaunchTask(segmentId int64) {
 	fmt.Println("execLaunchTask", segmentId)
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
+	rdd := segment.GetRdd(tx)
+	pj := rdd.GetProtojob(tx)
 	worker := GetRandomAliveWorker(tx)
 	if worker != nil {
 		segment.WorkerId = int64(worker.Id)
@@ -158,14 +175,31 @@ func (m *Master) execLaunchTask(segmentId int64) {
 		// if a worker was availble, launch the task
 		inputs := segment.CalculateInputSegments(tx)
 
-		// TODO: implement the RPC call
+		args := &client.ExecArgs{
+			Command:         pj.Command,
+			Segments:        inputs,
+			OutputSegmentId: int64(segment.Id),
+			Indices:         parseIndex(pj.PartitionIndex),
+			Parts:           pj.NumBuckets,
+		}
+
+		c := client.MakeWorkerClerk(worker.Url)
+
 		go func() {
-			fmt.Println("task inputs", inputs)
-			e := Event{
-				Type: TASK_SUCCESS,
-				Id:   segmentId,
+			success := c.ExecTask(args)
+			if success {
+				e := Event{
+					Type: TASK_SUCCESS,
+					Id:   segmentId,
+				}
+				m.queueEvent(e)
+			} else {
+				e := Event{
+					Type: TASK_FAILURE,
+					Id:   segmentId,
+				}
+				m.queueEvent(e)
 			}
-			m.queueEvent(e)
 		}()
 	} else {
 		// if no workers are available, just re-queue the task
