@@ -29,6 +29,7 @@ func (w *Worker) kill() {
 }
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
+	fmt.Println("GET TUPLES RPC")
 	reply.Tuples = w.segments[args.SegmentId].Partitions[args.PartitionIndex]
 	reply.Err = client.OK
 	return nil
@@ -39,16 +40,23 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	fmt.Println("executing task", args)
 	for _, segment := range args.Segments {
 		fmt.Println("fetching segment", segment)
+		// TODO: put in retry loop
 		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 		reply := GetTuplesReply{}
 		ok := client.CallRPC(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
 		if ok && reply.Err == client.OK {
+			fmt.Println("fetched tuples", len(reply.Tuples))
 			inputTuples = append(inputTuples, reply.Tuples...)
+		} else {
+			fmt.Println("failed to fetch tuples")
+			reply.Err = "not okay"
+			return nil
 		}
 	}
 
 	fmt.Println("running udf")
 	outputTuples := runUDF(args.Command, inputTuples)
+	fmt.Println("got output tuples", len(outputTuples))
 
 	fmt.Println("writing segment")
 	w.segments[args.OutputSegmentId] = MakeSegment(outputTuples, args.Indices, args.Parts)

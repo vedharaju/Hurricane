@@ -118,8 +118,8 @@ func MakeSegment(tuples []Tuple, indices []int, parts int) *Segment {
 
 func preprocessCommand(command string) string {
 	gopath := os.Getenv("GOPATH")
-  base := path.Clean(gopath)
-  return strings.Replace(command, "@", base, -1)
+	base := path.Clean(gopath)
+	return strings.Replace(command, "@", base, -1)
 }
 
 // Execute a UDF command that accepts zero or more input lists of tuples, and
