@@ -1,11 +1,36 @@
-package master
+package client
 
 import "net/rpc"
 import "fmt"
 import "sync"
 import "time"
 
-type Clerk struct {
+const (
+	OK          = "OK"
+	RESET       = "RESET"
+	NO_RESPONSE = "NO_RESPONSE"
+)
+
+type Err string
+
+type RegisterArgs struct {
+	Me string
+}
+
+type RegisterReply struct {
+	Id  int64
+	Err Err
+}
+
+type PingArgs struct {
+	Id int64
+}
+
+type PingReply struct {
+	Err Err
+}
+
+type MasterClerk struct {
 	mu sync.Mutex
 
 	// (host:port) information
@@ -14,8 +39,8 @@ type Clerk struct {
 	id     int64
 }
 
-func MakeClerk(me string, master string) *Clerk {
-	ck := new(Clerk)
+func MakeMasterClerk(me string, master string) *MasterClerk {
+	ck := new(MasterClerk)
 
 	ck.master = master
 	ck.me = me
@@ -23,22 +48,7 @@ func MakeClerk(me string, master string) *Clerk {
 	return ck
 }
 
-// call() sends an RPC to the rpcname handler on server srv
-// with arguments args, waits for the reply, and leaves the
-// reply in reply. the reply argument should be a pointer
-// to a reply structure.
-//
-// the return value is true if the server responded, and false
-// if call() was not able to contact the server. in particular,
-// the reply's contents are only valid if call() returned true.
-//
-// you should assume that call() will time out and return an
-// error after a while if it doesn't get a reply from the server.
-//
-// please use call() to send all RPCs, in client.go and server.go.
-// please don't change this function.
-//
-func call(srv string, rpcname string, args interface{}, reply interface{}) bool {
+func CallRPC(srv string, rpcname string, args interface{}, reply interface{}) bool {
 	c, errx := rpc.Dial("tcp", srv)
 	if errx != nil {
 		return false
@@ -55,7 +65,7 @@ func call(srv string, rpcname string, args interface{}, reply interface{}) bool 
 }
 
 // If retry=false, return NO_RESPONSE on failure
-func (ck *Clerk) Ping(retry bool) Err {
+func (ck *MasterClerk) Ping(retry bool) Err {
 	// id should be at least 1 if registration was successful
 	if ck.id <= 0 {
 		panic("Cannot ping before registering")
@@ -65,7 +75,7 @@ func (ck *Clerk) Ping(retry bool) Err {
 	for {
 		args := PingArgs{Id: ck.id}
 		reply := PingReply{}
-		ok := call(ck.master, "Master.Ping", &args, &reply)
+		ok := CallRPC(ck.master, "Master.Ping", &args, &reply)
 		if ok {
 			// either OK or RESET
 			return reply.Err
@@ -84,12 +94,12 @@ func (ck *Clerk) Ping(retry bool) Err {
 }
 
 // If retry=false, return 0 upon failure
-func (ck *Clerk) Register(retry bool) int64 {
+func (ck *MasterClerk) Register(retry bool) int64 {
 	to := 50 * time.Millisecond
 	for {
 		args := RegisterArgs{Me: ck.me}
 		reply := RegisterReply{}
-		ok := call(ck.master, "Master.Register", &args, &reply)
+		ok := CallRPC(ck.master, "Master.Register", &args, &reply)
 
 		if ok && reply.Err == OK {
 			ck.id = reply.Id
@@ -106,4 +116,23 @@ func (ck *Clerk) Register(retry bool) int64 {
 			to *= 2
 		}
 	}
+}
+
+type SegmentInput struct {
+	SegmentId      int64
+	PartitionIndex int
+	WorkerUrl      string
+	Index          int
+}
+
+type ExecArgs struct {
+	Command         string
+	Segments        []SegmentInput
+	OutputSegmentId int64
+	Indices         []int
+	Parts           int
+}
+
+type ExecReply struct {
+	Err Err
 }

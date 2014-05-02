@@ -9,6 +9,7 @@ import "sync/atomic"
 import "log"
 import "github.com/eaigner/hood"
 import "strings"
+import "client"
 
 const MAX_EVENTS = 10000
 
@@ -36,15 +37,15 @@ func commitOrPanic(tx *hood.Hood) {
 //
 // server Ping RPC handler.
 //
-func (m *Master) Ping(args *PingArgs, reply *PingReply) error {
+func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
 	fmt.Println("Pinging", args.Id)
 
 	tx := m.hd.Begin()
 	w := GetWorker(m.hd, args.Id)
 	if w.Dead {
-		reply.Err = RESET
+		reply.Err = client.RESET
 	} else {
-		reply.Err = OK
+		reply.Err = client.OK
 	}
 	// Timestamp is automatically upated on save
 	tx.Save(w)
@@ -144,19 +145,37 @@ func (m *Master) execLaunchTask(segmentId int64) {
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
-	inputs := segment.CalculateInputSegments(tx)
+	worker := GetRandomAliveWorker(tx)
+	if worker != nil {
+		segment.WorkerId = int64(worker.Id)
+	} else {
+		segment.WorkerId = 0
+	}
+	saveOrPanic(tx, segment)
+	commitOrPanic(tx)
 
-	// TODO: implement the RPC call
-	go func() {
-		fmt.Println("task inputs", inputs)
+	if segment.WorkerId != 0 {
+		// if a worker was availble, launch the task
+		inputs := segment.CalculateInputSegments(tx)
+
+		// TODO: implement the RPC call
+		go func() {
+			fmt.Println("task inputs", inputs)
+			e := Event{
+				Type: TASK_SUCCESS,
+				Id:   segmentId,
+			}
+			m.queueEvent(e)
+		}()
+	} else {
+		// if no workers are available, just re-queue the task
+		fmt.Println("no workers available")
 		e := Event{
-			Type: TASK_SUCCESS,
+			Type: LAUNCH_TASK,
 			Id:   segmentId,
 		}
 		m.queueEvent(e)
-	}()
-
-	commitOrPanic(tx)
+	}
 }
 
 func (m *Master) execTaskSuccess(segmentId int64) {
@@ -256,7 +275,7 @@ func (m *Master) execJobComplete(rddId int64) {
 //
 // server Register RPC handler.
 //
-func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
+func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply) error {
 	fmt.Println("Registering", args)
 
 	tx := m.hd.Begin()
@@ -273,7 +292,7 @@ func (m *Master) Register(args *RegisterArgs, reply *RegisterReply) error {
 
 	m.getNumAliveWorkers()
 
-	reply.Err = OK
+	reply.Err = client.OK
 	reply.Id = int64(newWorker.Id)
 
 	return nil

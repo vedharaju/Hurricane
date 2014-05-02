@@ -5,19 +5,19 @@ import "net"
 import "net/rpc"
 import "sync"
 import "log"
-import "master"
 import "strings"
+import "client"
 
 type Worker struct {
 	mu     sync.Mutex
 	l      net.Listener
-	master string
+	master *client.MasterClerk
 
 	segments map[int64]Segment
 }
 
-func (w *Worker) Ping(args *PingArgs, reply *PingReply) error {
-	reply.Err = OK
+func (w *Worker) Ping(args *client.PingArgs, reply *client.PingReply) error {
+	reply.Err = client.OK
 
 	return nil
 }
@@ -30,17 +30,17 @@ func (w *Worker) kill() {
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	reply.Tuples = w.segments[args.SegmentId].Partitions[args.PartitionIndex]
-	reply.Err = OK
+	reply.Err = client.OK
 	return nil
 }
 
-func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
+func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error {
 	var inputTuples []Tuple
 	for _, segment := range args.Segments {
 		args := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 		reply := GetTuplesReply{}
-		ok := call(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
-		if ok && reply.Err == OK {
+		ok := client.CallRPC(segment.WorkerUrl, "Worker.GetTuples", &args, &reply)
+		if ok && reply.Err == client.OK {
 			inputTuples = append(inputTuples, reply.Tuples...)
 		}
 	}
@@ -49,39 +49,8 @@ func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 
 	w.segments[args.OutputSegmentId] = MakeSegment(outputTuples, args.Indices, args.Parts)
 
-	reply.Err = OK
+	reply.Err = client.OK
 	return nil
-}
-
-// call() sends an RPC to the rpcname handler on server srv
-// with arguments args, waits for the reply, and leaves the
-// reply in reply. the reply argument should be a pointer
-// to a reply structure.
-//
-// the return value is true if the server responded, and false
-// if call() was not able to contact the server. in particular,
-// the reply's contents are only valid if call() returned true.
-//
-// you should assume that call() will time out and return an
-// error after a while if it doesn't get a reply from the server.
-//
-// please use call() to send all RPCs, in client.go and server.go.
-// please don't change this function.
-//
-func call(srv string, rpcname string, args interface{}, reply interface{}) bool {
-	c, errx := rpc.Dial("tcp", srv)
-	if errx != nil {
-		return false
-	}
-	defer c.Close()
-
-	err := c.Call(rpcname, args, reply)
-	if err == nil {
-		return true
-	}
-
-	fmt.Println(err)
-	return false
 }
 
 func StartServer(hostname string, masterhost string) *Worker {
@@ -91,7 +60,7 @@ func StartServer(hostname string, masterhost string) *Worker {
 
 	fmt.Println("Starting worker")
 	worker := new(Worker)
-	worker.master = masterhost
+	worker.master = client.MakeMasterClerk(hostname, masterhost)
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
@@ -114,16 +83,8 @@ func StartServer(hostname string, masterhost string) *Worker {
 	}()
 
 	// Register the worker to master
-	fmt.Println("Registered worker")
-	ok := false
-	for !ok {
-		args := master.RegisterArgs{Me: hostname}
-		reply := master.RegisterReply{}
-		ok = call(worker.master, "Master.Register", args, &reply)
-		if ok && reply.Err != OK {
-			ok = false
-		}
-	}
+	fmt.Println("Registering worker")
+	worker.master.Register(true)
 	fmt.Println("Registered worker")
 
 	return worker

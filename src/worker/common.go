@@ -8,6 +8,17 @@ import "hash/fnv"
 import "log"
 import "os/exec"
 import "strings"
+import "client"
+
+type GetTuplesArgs struct {
+	SegmentId      int64
+	PartitionIndex int
+}
+
+type GetTuplesReply struct {
+	Tuples []Tuple
+	Err    client.Err
+}
 
 type Tuple struct {
 	Slice []string

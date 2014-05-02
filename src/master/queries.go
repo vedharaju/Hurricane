@@ -453,3 +453,17 @@ func GetNumAliveWorkers(tx *hood.Hood) int {
 
 	return results[0].Value
 }
+
+func GetRandomAliveWorker(tx *hood.Hood) *Worker {
+	var results []Worker
+	err := tx.Where("dead", "=", false).OrderBy("?").Limit(1).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		return nil
+	} else {
+		return &results[0]
+	}
+}

@@ -3,10 +3,6 @@ package master
 import "time"
 
 const (
-	OK          = "OK"
-	RESET       = "RESET"
-	NO_RESPONSE = "NO_RESPONSE"
-
 	// workers should send a Ping RPC this often,
 	// to tell the master that the worker is alive.
 	TickInterval = time.Millisecond * 1000
@@ -23,25 +19,7 @@ const (
 	JOB_COMPLETE = 5
 )
 
-type Err string
 type EventType int
-
-type RegisterArgs struct {
-	Me string
-}
-
-type RegisterReply struct {
-	Id  int64
-	Err Err
-}
-
-type PingArgs struct {
-	Id int64
-}
-
-type PingReply struct {
-	Err Err
-}
 
 type Event struct {
 	Type EventType

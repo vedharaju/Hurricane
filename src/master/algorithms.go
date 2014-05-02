@@ -1,15 +1,9 @@
 package master
 
 import (
+	"client"
 	"github.com/eaigner/hood"
 )
-
-type SegmentInput struct {
-	SegmentId      int64
-	PartitionIndex int
-	WorkerUrl      string
-	Index          int
-}
 
 // Instantiate a workflow batch based on a worflow. This includes creating RDDs
 // for each Protojob, and connecting them with RddEdges.  The caller of this
@@ -98,7 +92,7 @@ func (rdd *Rdd) CreateSegments(hd *hood.Hood) []*Segment {
 }
 
 // Calculate the input segments for a given segment
-func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*SegmentInput {
+func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*client.SegmentInput {
 	rdd := segment.GetRdd(hd)
 	pj := rdd.GetProtojob(hd)
 
@@ -132,7 +126,7 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*SegmentInput {
 		workerMap[int64(worker.Id)] = worker
 	}
 
-	output := make([]*SegmentInput, 0)
+	output := make([]*client.SegmentInput, 0)
 
 	for _, inputRddEdge := range inputRddEdges {
 		inputWorkflowEdge := inputWorkflowEdgeMap[inputRddEdge.WorkflowEdgeId]
@@ -150,7 +144,7 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*SegmentInput {
 				}
 				// is the source segment assigned to this one?
 				if segmentAssignment == segment.Index {
-					input := &SegmentInput{
+					input := &client.SegmentInput{
 						SegmentId:      int64(sourceSegment.Id),
 						PartitionIndex: i,
 						//WorkerUrl:      workerMap[sourceSegment.WorkerId].Url,
