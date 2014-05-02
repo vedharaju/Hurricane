@@ -29,7 +29,7 @@ func (w *Worker) kill() {
 }
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) {
-	reply.Tuples := w.segments[args.SegmentId].Partitions[args.PartitionIndex]
+	reply.Tuples = w.segments[args.SegmentId].Partitions[args.PartitionIndex]
 	return nil
 }
 
@@ -46,15 +46,9 @@ func (w *Worker) ExecTask(args *ExecArgs, reply *ExecReply) error {
 
 	outputTuples := runUDF(args.Command, inputTuples)
 
-	for {
-		// TODO: fix this to update master of finished task (should be different rpc)
-		ok := call(worker.master, "Master.execTaskSuccess", &args, &reply)
-		if ok && reply.Err == OK {
-			break
-		}
-		// TODO: Sleep here for some time
-	}
+	w.segment[outputSegmenId] = MakeSegment(outputTuples, args.Indices, args.Parts)
 
+	reply.Err = OK
 	return nil
 }
 

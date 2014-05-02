@@ -26,8 +26,11 @@ type GetTuplesReply struct {
 }
 
 type ExecArgs struct {
-	Command  string
-	Segments []algorithms.SegmentInput
+	Command         string
+	Segments        []algorithms.SegmentInput
+	OutputSegmentId int64
+	Indices         []int
+	Parts           int
 }
 
 type ExecReply struct {
