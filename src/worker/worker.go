@@ -61,18 +61,17 @@ func StartServer(hostname string, masterhost string) *Worker {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
-        
-        fmt.Println("Starting worker")
+
+	fmt.Println("Starting worker")
 	worker := new(Worker)
 	worker.master = masterhost
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
 
-
-        // ignore the domain name: listen on all urls
-  	splitName := strings.Split(hostname, ":")
- 	l, e := net.Listen("tcp", ":"+splitName[1])
+	// ignore the domain name: listen on all urls
+	splitName := strings.Split(hostname, ":")
+	l, e := net.Listen("tcp", ":"+splitName[1])
 	if e != nil {
 		log.Fatal("listen error: ", e)
 	}
@@ -88,7 +87,7 @@ func StartServer(hostname string, masterhost string) *Worker {
 	}()
 
 	// Register the worker to master
-        fmt.Println("Registered worker")
+	fmt.Println("Registered worker")
 	ok := false
 	for !ok {
 		args := master.RegisterArgs{Me: hostname}
@@ -98,7 +97,7 @@ func StartServer(hostname string, masterhost string) *Worker {
 			ok = false
 		}
 	}
-        fmt.Println("Registered worker")
-	
-        return worker
+	fmt.Println("Registered worker")
+
+	return worker
 }
