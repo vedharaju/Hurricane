@@ -5,9 +5,11 @@ import "syscall"
 import "bufio"
 import "log"
 import "worker"
+import "path"
 
 func main() {
-  path := "../wordcount/crime_and_punishment.txt"
+	gopath := os.Getenv("GOPATH")
+  path := path.Join(gopath,"/src/demo/wordcount/crime_and_punishment.txt")
 
   file, err := os.Open(path)
   if err != nil {

@@ -4,11 +4,13 @@ package worker
 import "encoding/json"
 import "io"
 import "bytes"
+import "os"
 import "hash/fnv"
 import "log"
 import "os/exec"
 import "strings"
 import "client"
+import "path"
 
 type GetTuplesArgs struct {
 	SegmentId      int64
@@ -114,12 +116,18 @@ func MakeSegment(tuples []Tuple, indices []int, parts int) *Segment {
 	return &segment
 }
 
+func preprocessCommand(command string) string {
+	gopath := os.Getenv("GOPATH")
+  base := path.Clean(gopath)
+  return strings.Replace(command, "@", base, -1)
+}
+
 // Execute a UDF command that accepts zero or more input lists of tuples, and
 // returns one output list of tuples. This function blocks until the UDF is
 // done executing.
 func runUDF(command string, inputTuples ...[]Tuple) []Tuple {
 	// spawn the external process
-	splits := strings.Split(command, " ")
+	splits := strings.Split(preprocessCommand(command), " ")
 	cmd := exec.Command(splits[0], splits[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
