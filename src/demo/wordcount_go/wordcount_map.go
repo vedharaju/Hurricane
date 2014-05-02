@@ -20,6 +20,7 @@ func main() {
 	for _, tuple := range inputTuples {
 		words := strings.Fields(tuple.Slice[0])
 		for _, word := range words {
+			word = strings.ToLower(word)
 			outTuple := worker.Tuple{[]string{word, "1"}}
 			stdout.Write(outTuple.SerializeTuple(0))
 			stdout.Write([]byte{'\n'})
