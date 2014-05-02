@@ -472,3 +472,31 @@ func GetRandomAliveWorker(tx *hood.Hood) *Worker {
 		return &results[0]
 	}
 }
+
+func (rdd *Rdd) GetWorkflowBatch(tx *hood.Hood) *WorkflowBatch {
+	var results []WorkflowBatch
+	err := tx.Where("id", "=", rdd.WorkflowBatchId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("workflow batch for rdd not found")
+	} else {
+		return &results[0]
+	}
+}
+
+func (workflowBatch *WorkflowBatch) GetWorkflow(tx *hood.Hood) *Workflow {
+	var results []Workflow
+	err := tx.Where("id", "=", workflowBatch.WorkflowId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find workflow for the given workflow batch")
+	} else {
+		return &results[0]
+	}
+}

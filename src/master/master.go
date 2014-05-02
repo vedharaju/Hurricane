@@ -154,14 +154,23 @@ func parseIndex(s string) []int {
 	return ints
 }
 
+func preprocessMasterCommand(cmd string, batch *WorkflowBatch, segment *Segment, workflow *Workflow) string {
+	cmd = strings.Replace(cmd, "\\I", string(segment.Index), -1)
+	cmd = strings.Replace(cmd, "\\S", string(batch.StartTime), -1)
+	cmd = strings.Replace(cmd, "\\D", string(workflow.Duration), -1)
+	return cmd
+}
+
 func (m *Master) execLaunchTask(segmentId int64) {
 	fmt.Println("execLaunchTask", segmentId)
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
 	rdd := segment.GetRdd(tx)
+	batch := rdd.GetWorkflowBatch(tx)
 	pj := rdd.GetProtojob(tx)
 	worker := GetRandomAliveWorker(tx)
+	workflow := batch.GetWorkflow(tx)
 	if worker != nil {
 		segment.WorkerId = int64(worker.Id)
 	} else {
@@ -176,8 +185,10 @@ func (m *Master) execLaunchTask(segmentId int64) {
 		inputs := segment.CalculateInputSegments(tx)
 		commitOrPanic(tx)
 
+		command := preprocessMasterCommand(pj.Command, batch, segment, workflow)
+
 		args := &client.ExecArgs{
-			Command:         pj.Command,
+			Command:         command,
 			Segments:        inputs,
 			OutputSegmentId: int64(segment.Id),
 			Indices:         parseIndex(pj.PartitionIndex),
