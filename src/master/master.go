@@ -198,14 +198,40 @@ func (m *Master) execLaunchTask(segmentId int64) {
 		c := client.MakeWorkerClerk(worker.Url)
 
 		go func() {
-			success := c.ExecTask(args)
-			if success {
-				e := Event{
-					Type: TASK_SUCCESS,
-					Id:   segmentId,
+			reply := c.ExecTask(args, 3)
+			if reply != nil {
+				if reply.Err == client.OK {
+					// task success
+					e := Event{
+						Type: TASK_SUCCESS,
+						Id:   segmentId,
+					}
+					m.queueEvent(e)
+				} else {
+					if reply.Err == client.DEAD_SEGMENT {
+						fmt.Println(client.DEAD_SEGMENT)
+						// task failed due to dead segment host
+						e := Event{
+							Type: TASK_FAILURE,
+							Id:   segmentId,
+						}
+						m.queueEvent(e)
+						panic("this failure case hasn't been implemented yet")
+					} else {
+						fmt.Println(client.SEGMENT_NOT_FOUND)
+						// task failed due to a segment host that forgot an RDD
+						e := Event{
+							Type: TASK_FAILURE,
+							Id:   segmentId,
+						}
+						m.queueEvent(e)
+						panic("this failure case hasn't been implemented yet")
+					}
 				}
-				m.queueEvent(e)
 			} else {
+				fmt.Println("DEAD_WORKER")
+				m.markDeadWorker(worker)
+				// Conclude that the worker is dead
 				e := Event{
 					Type: TASK_FAILURE,
 					Id:   segmentId,
@@ -222,6 +248,15 @@ func (m *Master) execLaunchTask(segmentId int64) {
 		}
 		m.queueEvent(e)
 	}
+}
+
+func (m *Master) markDeadWorker(worker *Worker) {
+	// TODO: do something intelligent here
+	worker.Dead = true
+	tx := m.hd.Begin()
+	saveOrPanic(tx, worker)
+	commitOrPanic(tx)
+	m.getNumAliveWorkers()
 }
 
 func (m *Master) execTaskSuccess(segmentId int64) {

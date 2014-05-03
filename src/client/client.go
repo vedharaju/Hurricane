@@ -32,7 +32,6 @@ type PingReply struct {
 }
 
 type MasterClerk struct {
-	// (host:port) information
 	master string
 	me     string
 	id     int64
@@ -137,22 +136,23 @@ type ExecReply struct {
 }
 
 type WorkerClerk struct {
-	// (host:port) information
 	hostname string
 }
 
 func MakeWorkerClerk(hostname string) *WorkerClerk {
 	ck := new(WorkerClerk)
-
 	ck.hostname = hostname
-
 	return ck
 }
 
-// no retry loop
-func (ck *WorkerClerk) ExecTask(args *ExecArgs) bool {
-	reply := ExecReply{}
-	ok := CallRPC(ck.hostname, "Worker.ExecTask", &args, &reply)
-
-	return ok && reply.Err == OK
+func (ck *WorkerClerk) ExecTask(args *ExecArgs, numRetries int) *ExecReply {
+	fmt.Println("executing", args, ck)
+	for i := 0; i < numRetries; i++ {
+		reply := ExecReply{}
+		ok := CallRPC(ck.hostname, "Worker.ExecTask", args, &reply)
+		if ok {
+			return &reply
+		}
+	}
+	return nil
 }

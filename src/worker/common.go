@@ -26,7 +26,7 @@ func MakeWorkerInternalClerk(hostname string) *WorkerInternalClerk {
 func (ck *WorkerInternalClerk) GetTuples(args *GetTuplesArgs, numRetries int) *GetTuplesReply {
 	for i := 0; i < numRetries; i++ {
 		reply := GetTuplesReply{}
-		ok := client.CallRPC(ck.hostname, "Worker.GetTuples", &args, &reply)
+		ok := client.CallRPC(ck.hostname, "Worker.GetTuples", args, &reply)
 		if ok {
 			return &reply
 		}
