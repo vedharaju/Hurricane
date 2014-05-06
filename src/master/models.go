@@ -8,6 +8,13 @@ const (
 	SEGMENT_COMPLETE = 1
 	SEGMENT_PENDING  = 0
 
+	SEGMENT_COPY_COMPLETE = 1
+	SEGMENT_COPY_PENDING  = 0
+
+	WORKER_ALIVE   = 0
+	WORKER_MISSING = 1
+	WORKER_DEAD    = 2
+
 	RDD_PENDING  = 0
 	RDD_COMPLETE = 1
 )
@@ -86,6 +93,30 @@ type Segment struct {
 func (table *Segment) Indexes(indexes *hood.Indexes) {
 	indexes.Add("segment__rdd_id", "rdd_id")
 	indexes.Add("segment__worker_id", "worker_id")
+}
+
+// Backup of a segment on a different worker node
+type SegmentCopy struct {
+	// Auto-incrementing int field 'id'
+	Id hood.Id
+
+	// Reference to original segment
+	SegmentId int64
+
+	// Status of the copy (SEGMENT_COPY_COMPLETE vs SEGMENT_COPY_PENDING)
+	Status int
+
+	// Reference to worker containing the copy
+	WorkerId int64
+
+	// These fields are auto updated on save
+	Created hood.Created
+	Updated hood.Updated
+}
+
+func (c *SegmentCopy) Indexes(indexes *hood.Indexes) {
+	indexes.Add("segment_copy__segment_id", "segment_id")
+	indexes.Add("segment_copy__worker_id", "worker_id")
 }
 
 type Workflow struct {
@@ -185,8 +216,8 @@ type Worker struct {
 	// URL and port of the worker node
 	Url string
 
-	// false if the worker is alive
-	Dead bool
+	// Status of the worker (WORKER_ALIVE, WORKER_MISSING, WORKER_DEAD)
+	Status int
 
 	// These fields are auto updated on save
 	Created hood.Created

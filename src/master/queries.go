@@ -446,7 +446,7 @@ func GetNumAliveWorkers(tx *hood.Hood) int {
 	err := tx.FindSql(&results,
 		`select count(*) as value
     from worker
-    where dead=false`)
+    where status=0`)
 	if err != nil {
 		panic(err)
 	}
@@ -459,7 +459,7 @@ func GetRandomAliveWorker(tx *hood.Hood) *Worker {
 	err := tx.FindSql(&results,
 		`select *
     from worker
-    where dead = false
+    where status=0
     order by random()
     limit 1`)
 	if err != nil {

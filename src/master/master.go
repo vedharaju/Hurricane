@@ -43,7 +43,7 @@ func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
 
 	tx := m.hd.Begin()
 	w := GetWorker(m.hd, args.Id)
-	if w.Dead {
+	if w.Status == WORKER_DEAD {
 		reply.Err = client.RESET
 	} else {
 		reply.Err = client.OK
@@ -256,7 +256,7 @@ func (m *Master) execLaunchTask(segmentId int64) {
 
 func (m *Master) markDeadWorker(worker *Worker) {
 	// TODO: do something intelligent here
-	worker.Dead = true
+	worker.Status = WORKER_DEAD
 	tx := m.hd.Begin()
 	saveOrPanic(tx, worker)
 	commitOrPanic(tx)
@@ -353,7 +353,7 @@ func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply
 	tx := m.hd.Begin()
 	existingWorkers := GetWorkersAtAddress(tx, args.Me)
 	for _, w := range existingWorkers {
-		w.Dead = true
+		w.Status = WORKER_DEAD
 		tx.Save(w)
 	}
 	newWorker := Worker{
