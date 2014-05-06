@@ -64,7 +64,7 @@ func makeProtoJob(hd *hood.Hood, workflow *master.Workflow, command string) *mas
 			} else if v == "false" {
 				job.IsReduce = false
 			} else {
-				// TODO: error incorrect value
+				panic("v should be true or false")
 			}
 		} else if k == "p" {
 			job.PartitionIndex = v
@@ -73,14 +73,21 @@ func makeProtoJob(hd *hood.Hood, workflow *master.Workflow, command string) *mas
 			if err == nil {
 				job.NumSegments = int(num)
 			} else {
-				//TODO: throw error
+				panic("w should be an int")
 			}
 		} else if k == "b" {
 			num, err := strconv.ParseInt(v, 10, 0)
 			if err == nil {
 				job.NumBuckets = int(num)
 			} else {
-				//TODO: throw error
+				panic("b should be an int")
+			}
+		} else if k == "c" {
+			num, err := strconv.ParseInt(v, 10, 0)
+			if err == nil {
+				job.Copies = int(num)
+			} else {
+				panic("c should be an int")
 			}
 		}
 	}

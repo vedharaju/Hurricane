@@ -146,6 +146,9 @@ type Protojob struct {
 	// True if the input segments should be grouped by partition
 	IsReduce bool
 
+	// Number of additional worker nodes to replicate the job output on
+	Copies int
+
 	// These fields are auto updated on save
 	Created hood.Created
 	Updated hood.Updated
