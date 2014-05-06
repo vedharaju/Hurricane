@@ -8,7 +8,7 @@ import (
 // Instantiate a workflow batch based on a worflow. This includes creating RDDs
 // for each Protojob, and connecting them with RddEdges.  The caller of this
 // function should wrap it in a trasnaction
-func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int) *WorkflowBatch {
+func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int64) *WorkflowBatch {
 	// Create workflowBatch object
 	batch := &WorkflowBatch{
 		WorkflowId: int64(workflow.Id),
@@ -31,7 +31,7 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int) *WorkflowBatch {
 	for _, workflowEdge := range workflow.GetWorkflowEdges(hd) {
 		// Source rdd might be delayed
 		if workflowEdge.Delay > 0 {
-			source_rdd := GetRddByStartTime(hd, workflowEdge.SourceJobId, start-workflowEdge.Delay*workflow.Duration)
+			source_rdd := GetRddByStartTime(hd, workflowEdge.SourceJobId, start-int64(workflowEdge.Delay)*workflow.Duration)
 			if source_rdd != nil {
 				rddEdge := &RddEdge{
 					SourceRddId:    int64(source_rdd.Id),

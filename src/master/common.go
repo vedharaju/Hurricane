@@ -5,11 +5,14 @@ import "time"
 const (
 	// workers should send a Ping RPC this often,
 	// to tell the master that the worker is alive.
-	TickInterval = time.Millisecond * 20000
+	TickInterval = time.Millisecond * 1000
 
-	// the master will declare a worker dead if it misses
+	// the master will declare a worker missing if it misses
 	// this many Ping RPCs in a row.
-	DeadPings = 5
+	MissingPings = 5
+
+	// declare a worker dead after this many missed pings
+	DeadPings = 50
 
 	NEW_BATCH    = 0
 	LAUNCH_TASK  = 1

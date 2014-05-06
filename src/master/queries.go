@@ -215,7 +215,7 @@ func GetWorker(tx *hood.Hood, id int64) *Worker {
 	}
 }
 
-func GetRddByStartTime(tx *hood.Hood, protojobId int64, startTime int) *Rdd {
+func GetRddByStartTime(tx *hood.Hood, protojobId int64, startTime int64) *Rdd {
 	var results []Rdd
 	err := tx.Join(hood.InnerJoin, &WorkflowBatch{}, "workflow_batch.id", "rdd.workflow_batch_id").Where("protojob_id", "=", protojobId).And("start_time", "=", startTime).Find(&results)
 	if err != nil {

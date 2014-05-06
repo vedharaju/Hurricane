@@ -125,6 +125,7 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 		if mode == NONE {
 			if r_job.MatchString(line) {
 				mode = JOB
+				saveOrPanic(hd, workflow)
 			} else {
 				splits := strings.Split(line, "=")
 				if len(splits) == 2 {
@@ -135,7 +136,7 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 						if (err != nil) || (duration < 0) {
 							return nil, errors.New("header: invalid duration")
 						}
-						workflow.Duration = duration
+						workflow.Duration = int64(duration)
 					}
 				}
 			}

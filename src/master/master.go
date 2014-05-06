@@ -105,10 +105,11 @@ func (m *Master) execNewBatch(workflowId int64) {
 	// create new workflowbatch
 	lastBatch := workflow.GetLastWorkflowBatch(tx)
 
-	now := int(time.Now().Unix())
+	now := time.Now().UnixNano() / 1000000
 	var batch *WorkflowBatch
 	if lastBatch == nil {
 		// if no last batch, then create the first batch right now - duration - time_eror
+		fmt.Println("No last batch")
 		batch = workflow.MakeBatch(tx, now-workflow.Duration-TIME_ERROR)
 	} else {
 		// TODO: figure out what exactly to do if there are multiple
@@ -117,7 +118,9 @@ func (m *Master) execNewBatch(workflowId int64) {
 
 		// for now, only launch a new batch if the proper time has arrived
 		// (eg. the end time of the new batch has definitely passed)
+		fmt.Println(now, lastBatch.StartTime)
 		if now > lastBatch.StartTime+2*workflow.Duration+TIME_ERROR {
+			fmt.Println("add new batch", workflow.Duration)
 			batch = workflow.MakeBatch(tx, lastBatch.StartTime+workflow.Duration)
 		}
 	}
