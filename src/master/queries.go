@@ -413,13 +413,13 @@ func (rdd *Rdd) GetDestRdds(tx *hood.Hood) []*Rdd {
 	return pointerResults
 }
 
-func (rdd *Rdd) GetNumSegmentsComplete(tx *hood.Hood) int {
+func (rdd *Rdd) GetNumSegmentsComplete(tx *hood.Hood, include *Segment) int {
 	var results []IntStruct
 	err := tx.FindSql(&results,
 		`select count(*) as value
     from segment
-    where rdd_id = $1
-    and status=1`, rdd.Id)
+    where (rdd_id = $1 and status=1)
+    or id = $2`, rdd.Id, include.Id)
 	if err != nil {
 		panic(err)
 	}

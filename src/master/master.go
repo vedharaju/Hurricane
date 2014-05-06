@@ -73,8 +73,6 @@ func (m *Master) eventLoop() {
 				m.execTaskFailure(e.Id)
 			case LAUNCH_JOB:
 				m.execLaunchJob(e.Id)
-			case JOB_COMPLETE:
-				m.execJobComplete(e.Id)
 			}
 		} else {
 			fmt.Println("sleeping", to)
@@ -272,19 +270,40 @@ func (m *Master) execTaskSuccess(segmentId int64) {
 
 	segment.Status = SEGMENT_COMPLETE
 	saveOrPanic(tx, segment)
-	commitOrPanic(tx)
 
-	tx = m.hd.Begin()
-	numComplete := rdd.GetNumSegmentsComplete(tx)
-	commitOrPanic(tx)
+	numComplete := rdd.GetNumSegmentsComplete(tx, segment)
 
 	if numComplete == pj.NumSegments {
-		e := Event{
-			Type: JOB_COMPLETE,
-			Id:   int64(rdd.Id),
+		fmt.Println("Job complete", rdd.Id)
+		rdd.State = RDD_COMPLETE
+		saveOrPanic(tx, rdd)
+
+		destRdds := rdd.GetDestRdds(tx)
+
+		// For each destRdd, check whether all of the srcRdds
+		// for that destRdd are complete. If so, launch the job
+		// for destRdd
+		// TODO: this logic will have to be re-written when fault-tolerance
+		// is implemented
+		for _, destRdd := range destRdds {
+			srcRdds := destRdd.GetSourceRdds(tx)
+			isComplete := true
+			for _, srcRdd := range srcRdds {
+				if (srcRdd.State != RDD_COMPLETE) && (srcRdd.Id != rdd.Id) {
+					isComplete = false
+				}
+			}
+			if isComplete {
+				e := Event{
+					Type: LAUNCH_JOB,
+					Id:   int64(destRdd.Id),
+				}
+				m.queueEvent(e)
+			}
 		}
-		m.queueEvent(e)
 	}
+
+	commitOrPanic(tx)
 }
 
 func (m *Master) execTaskFailure(segmentId int64) {
@@ -317,40 +336,6 @@ func (m *Master) execLaunchJob(rddId int64) {
 		}
 		m.queueEvent(e)
 	}
-}
-
-func (m *Master) execJobComplete(rddId int64) {
-	fmt.Println("execJobComplete", rddId)
-	tx := m.hd.Begin()
-
-	rdd := GetRdd(tx, rddId)
-	destRdds := rdd.GetDestRdds(tx)
-
-	// For each destRdd, check whether all of the srcRdds
-	// for that destRdd are complete. If so, launch the job
-	// for destRdd
-	// TODO: this logic will have to be re-written when fault-tolerance
-	// is implemented
-	for _, destRdd := range destRdds {
-		srcRdds := destRdd.GetSourceRdds(tx)
-		isComplete := true
-		for _, srcRdd := range srcRdds {
-			pj := srcRdd.GetProtojob(tx)
-			numComplete := srcRdd.GetNumSegmentsComplete(tx)
-			if numComplete != pj.NumSegments {
-				isComplete = false
-			}
-		}
-		if isComplete {
-			e := Event{
-				Type: LAUNCH_JOB,
-				Id:   int64(destRdd.Id),
-			}
-			m.queueEvent(e)
-		}
-	}
-
-	commitOrPanic(tx)
 }
 
 //

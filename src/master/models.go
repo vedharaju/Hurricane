@@ -7,6 +7,9 @@ import (
 const (
 	SEGMENT_COMPLETE = 1
 	SEGMENT_PENDING  = 0
+
+	RDD_PENDING  = 0
+	RDD_COMPLETE = 1
 )
 
 // Dependency between two RDDs
@@ -43,6 +46,9 @@ type Rdd struct {
 
 	// Reference to the protojob that is executed to construct the RDD
 	ProtojobId int64
+
+	// Current state of Rdd, default pending
+	State int64
 
 	// These fields are auto updated on save
 	Created hood.Created
