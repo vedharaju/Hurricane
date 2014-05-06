@@ -122,8 +122,23 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if mode == NONE && r_job.MatchString(line) {
-			mode = JOB
+		if mode == NONE {
+			if r_job.MatchString(line) {
+				mode = JOB
+			} else {
+				splits := strings.Split(line, "=")
+				if len(splits) == 2 {
+					key := strings.TrimSpace(splits[0])
+					value := strings.TrimSpace(splits[1])
+					if key == "d" {
+						duration, err := strconv.Atoi(value)
+						if (err != nil) || (duration < 0) {
+							return nil, errors.New("header: invalid duration")
+						}
+						workflow.Duration = duration
+					}
+				}
+			}
 		} else if mode == JOB {
 			if r_workflow.MatchString(line) {
 				mode = WORKFLOW
