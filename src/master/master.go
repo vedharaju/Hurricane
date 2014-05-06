@@ -59,6 +59,7 @@ func (m *Master) eventLoop() {
 	to := 1
 	for {
 		if atomic.LoadInt64(&m.numAliveWorkers) > 0 {
+			start := time.Now()
 			to = 1
 			e := <-m.events
 			atomic.AddInt64(&m.numQueuedEvents, -1)
@@ -74,6 +75,8 @@ func (m *Master) eventLoop() {
 			case LAUNCH_JOB:
 				m.execLaunchJob(e.Id)
 			}
+			diff := time.Now().Sub(start)
+			fmt.Println("duration", diff)
 		} else {
 			fmt.Println("sleeping", to)
 			time.Sleep(time.Duration(to) * time.Millisecond)

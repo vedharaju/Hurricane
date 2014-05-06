@@ -11,6 +11,13 @@ func saveOrPanic(hd *hood.Hood, x interface{}) {
 	}
 }
 
+func saveAllOrPanic(hd *hood.Hood, x interface{}) {
+	_, err := hd.SaveAll(x)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func MockProtojob(hd *hood.Hood, workflow *Workflow) *Protojob {
 	job := Protojob{
 		Command:        "command",

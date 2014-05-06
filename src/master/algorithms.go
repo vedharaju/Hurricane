@@ -18,37 +18,43 @@ func (workflow *Workflow) MakeBatch(hd *hood.Hood, start int64) *WorkflowBatch {
 
 	// Create rdd objects
 	pjToRdd := make(map[int64]int64)
+	rdds := make([]Rdd, 0)
 	for _, protojob := range workflow.GetProtojobs(hd) {
-		rdd := &Rdd{
+		rdd := Rdd{
 			WorkflowBatchId: int64(batch.Id),
 			ProtojobId:      int64(protojob.Id),
 		}
-		saveOrPanic(hd, rdd)
-		pjToRdd[int64(protojob.Id)] = int64(rdd.Id)
+		rdds = append(rdds, rdd)
+	}
+	saveAllOrPanic(hd, &rdds)
+	for _, rdd := range rdds {
+		pjToRdd[rdd.ProtojobId] = int64(rdd.Id)
 	}
 
 	// Create edges
+	edges := make([]RddEdge, 0)
 	for _, workflowEdge := range workflow.GetWorkflowEdges(hd) {
 		// Source rdd might be delayed
 		if workflowEdge.Delay > 0 {
 			source_rdd := GetRddByStartTime(hd, workflowEdge.SourceJobId, start-int64(workflowEdge.Delay)*workflow.Duration)
 			if source_rdd != nil {
-				rddEdge := &RddEdge{
+				rddEdge := RddEdge{
 					SourceRddId:    int64(source_rdd.Id),
 					DestRddId:      pjToRdd[workflowEdge.DestJobId],
 					WorkflowEdgeId: int64(workflowEdge.Id),
 				}
-				saveOrPanic(hd, rddEdge)
+				edges = append(edges, rddEdge)
 			}
 		} else {
-			rddEdge := &RddEdge{
+			rddEdge := RddEdge{
 				SourceRddId:    pjToRdd[workflowEdge.SourceJobId],
 				DestRddId:      pjToRdd[workflowEdge.DestJobId],
 				WorkflowEdgeId: int64(workflowEdge.Id),
 			}
-			saveOrPanic(hd, rddEdge)
+			edges = append(edges, rddEdge)
 		}
 	}
+	saveAllOrPanic(hd, &edges)
 
 	return batch
 }
