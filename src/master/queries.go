@@ -184,6 +184,23 @@ func GetWorkers(tx *hood.Hood) []*Worker {
 	return pointerResults
 }
 
+func GetAliveWorkers(tx *hood.Hood) []*Worker {
+	var results []Worker
+	err := tx.Where("status", "=", WORKER_ALIVE).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Worker, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
 func GetWorkersAtAddress(tx *hood.Hood, address string) []*Worker {
 	var results []Worker
 	err := tx.Where("url", "=", address).Find(&results)
@@ -345,6 +362,34 @@ func (segment *Segment) GetSegmentCopies(tx *hood.Hood) []*SegmentCopy {
 	}
 
 	return pointerResults
+}
+
+func GetSegmentCopy(tx *hood.Hood, segmentCopyId int64) *SegmentCopy {
+	var results []SegmentCopy
+	err := tx.Where("id", "=", segmentCopyId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find segment copy with given id")
+	} else {
+		return &results[0]
+	}
+}
+
+func (segmentCopy *SegmentCopy) GetSegment(tx *hood.Hood) *Segment {
+	var results []Segment
+	err := tx.Where("id", "=", segmentCopy.SegmentId).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(results) == 0 {
+		panic("could not find rdd with given id")
+	} else {
+		return &results[0]
+	}
 }
 
 func (protojob *Protojob) GetInputEdges(tx *hood.Hood) []*WorkflowEdge {

@@ -34,6 +34,17 @@ func (ck *WorkerInternalClerk) GetTuples(args *GetTuplesArgs, numRetries int) *G
 	return nil
 }
 
+func (ck *WorkerInternalClerk) GetSegment(args *GetSegmentArgs, numRetries int) *GetSegmentReply {
+	for i := 0; i < numRetries; i++ {
+		reply := GetSegmentReply{}
+		ok := client.CallRPC(ck.hostname, "Worker.GetSegment", args, &reply)
+		if ok {
+			return &reply
+		}
+	}
+	return nil
+}
+
 type GetTuplesArgs struct {
 	SegmentId      int64
 	PartitionIndex int
@@ -42,6 +53,15 @@ type GetTuplesArgs struct {
 type GetTuplesReply struct {
 	Tuples []Tuple
 	Err    client.Err
+}
+
+type GetSegmentArgs struct {
+	SegmentId int64
+}
+
+type GetSegmentReply struct {
+	Segment *Segment
+	Err     client.Err
 }
 
 type Tuple struct {

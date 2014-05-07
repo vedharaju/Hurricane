@@ -135,6 +135,15 @@ type ExecReply struct {
 	Err Err
 }
 
+type CopySegmentArgs struct {
+	SegmentId int64
+	WorkerUrl string
+}
+
+type CopySegmentReply struct {
+	Err Err
+}
+
 type WorkerClerk struct {
 	hostname string
 }
@@ -150,6 +159,18 @@ func (ck *WorkerClerk) ExecTask(args *ExecArgs, numRetries int) *ExecReply {
 	for i := 0; i < numRetries; i++ {
 		reply := ExecReply{}
 		ok := CallRPC(ck.hostname, "Worker.ExecTask", args, &reply)
+		if ok {
+			return &reply
+		}
+	}
+	return nil
+}
+
+func (ck *WorkerClerk) CopySegment(args *CopySegmentArgs, numRetries int) *CopySegmentReply {
+	fmt.Println("copying", args, ck)
+	for i := 0; i < numRetries; i++ {
+		reply := CopySegmentReply{}
+		ok := CallRPC(ck.hostname, "Worker.CopySegment", args, &reply)
 		if ok {
 			return &reply
 		}

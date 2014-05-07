@@ -19,7 +19,9 @@ const (
 	TASK_SUCCESS = 2
 	TASK_FAILURE = 3
 	LAUNCH_JOB   = 4
-	JOB_COMPLETE = 5
+	COPY_SUCCESS = 5
+	COPY_FAILURE = 6
+	LAUNCH_COPY  = 7
 )
 
 type EventType int

@@ -40,6 +40,57 @@ func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	return nil
 }
 
+func (w *Worker) GetSegment(args *GetSegmentArgs, reply *GetSegmentReply) error {
+	fmt.Println("GET SEGMENT RPC")
+	segment := w.segments[args.SegmentId]
+	if segment != nil {
+		reply.Segment = segment
+		reply.Err = client.OK
+	} else {
+		reply.Err = client.SEGMENT_NOT_FOUND
+	}
+	return nil
+}
+
+func (w *Worker) LocalGetSegment(segmentId int64) *Segment {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.segments[segmentId]
+}
+
+func (w *Worker) LocalPutSegment(segmentId int64, segment *Segment) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.segments[segmentId] = segment
+}
+
+func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySegmentReply) error {
+	fmt.Println("copying segment", args)
+	if w.LocalGetSegment(args.SegmentId) != nil {
+		fmt.Println("already have segment")
+	} else {
+		fmt.Println("fetching segment", args.SegmentId)
+		clerk := MakeWorkerInternalClerk(args.WorkerUrl)
+		args2 := GetSegmentArgs{SegmentId: args.SegmentId}
+		reply2 := clerk.GetSegment(&args2, 3)
+		if reply2 != nil {
+			if reply2.Err == client.OK {
+				fmt.Println("fetched segment", args.SegmentId)
+				w.LocalPutSegment(args.SegmentId, reply2.Segment)
+			} else {
+				reply.Err = reply2.Err
+				fmt.Println(reply.Err)
+				return nil
+			}
+		} else {
+			reply.Err = client.DEAD_SEGMENT
+			fmt.Println(reply.Err)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error {
 	var inputTuples []Tuple
 	fmt.Println("executing task", args)
@@ -69,7 +120,8 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	fmt.Println("got output tuples", len(outputTuples))
 
 	fmt.Println("writing segment")
-	w.segments[args.OutputSegmentId] = MakeSegment(outputTuples, args.Indices, args.Parts)
+	segment := MakeSegment(outputTuples, args.Indices, args.Parts)
+	w.LocalPutSegment(args.OutputSegmentId, segment)
 
 	fmt.Println("success")
 	reply.Err = client.OK

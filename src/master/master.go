@@ -11,6 +11,7 @@ import "github.com/eaigner/hood"
 import "strings"
 import "client"
 import "strconv"
+import "math/rand"
 
 const MAX_EVENTS = 10000
 
@@ -20,6 +21,7 @@ const TIME_ERROR = 100
 type Master struct {
 	numQueuedEvents int64
 	numAliveWorkers int64
+	minWorkers      int64
 	mu              sync.Mutex
 	l               net.Listener
 	me              int
@@ -58,7 +60,7 @@ func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
 func (m *Master) eventLoop() {
 	to := 1
 	for {
-		if atomic.LoadInt64(&m.numAliveWorkers) > 0 {
+		if atomic.LoadInt64(&m.numAliveWorkers) >= atomic.LoadInt64(&m.minWorkers) {
 			start := time.Now()
 			to = 1
 			e := <-m.events
@@ -74,6 +76,12 @@ func (m *Master) eventLoop() {
 				m.execTaskFailure(e.Id)
 			case LAUNCH_JOB:
 				m.execLaunchJob(e.Id)
+			case COPY_SUCCESS:
+				m.execCopySuccess(e.Id)
+			case COPY_FAILURE:
+				m.execCopyFailure(e.Id)
+			case LAUNCH_COPY:
+				m.execLaunchCopy(e.Id)
 			}
 			diff := time.Now().Sub(start)
 			fmt.Println("duration", diff)
@@ -93,10 +101,166 @@ func (m *Master) numOutstandingEvents() int64 {
 	return atomic.LoadInt64(&m.numQueuedEvents)
 }
 
+func (m *Master) increaseMinWorkersTo(num int64) {
+	x := atomic.LoadInt64(&m.minWorkers)
+	for x < num {
+		success := atomic.CompareAndSwapInt64(&m.minWorkers, x, num)
+		if success {
+			return
+		} else {
+			x = atomic.LoadInt64(&m.minWorkers)
+		}
+	}
+}
+
 // Add an event to the event queue
 func (m *Master) queueEvent(e Event) {
 	atomic.AddInt64(&m.numQueuedEvents, 1)
 	m.events <- e
+}
+
+func (m *Master) execCopySuccess(segmentCopyId int64) {
+	fmt.Println("copySuccess", segmentCopyId)
+
+	tx := m.hd.Begin()
+	cp := GetSegmentCopy(tx, segmentCopyId)
+	cp.Status = SEGMENT_COPY_COMPLETE
+	saveOrPanic(tx, cp)
+
+	segment := cp.GetSegment(tx)
+	otherCopies := segment.GetSegmentCopies(tx)
+
+	numComplete := 0
+	for _, c := range otherCopies {
+		if (c.Status == SEGMENT_COPY_COMPLETE) || (c.Id == cp.Id) {
+			numComplete += 1
+		}
+	}
+
+	rdd := segment.GetRdd(tx)
+	pj := rdd.GetProtojob(tx)
+
+	// If all of the segment copies are finished transmitting, declare
+	// the task complete
+	if numComplete >= pj.Copies {
+		e := Event{
+			Type: TASK_SUCCESS,
+			Id:   int64(segment.Id),
+		}
+		m.queueEvent(e)
+	}
+
+	commitOrPanic(tx)
+}
+
+func (m *Master) execCopyFailure(segmentCopyId int64) {
+	fmt.Println("copyFailure", segmentCopyId)
+	// TODO: do something more sophisticated on failure to allow
+	// for recovery after worker failure (for example, if the task failed
+	// because of missing input segments)
+	e := Event{
+		Type: LAUNCH_COPY,
+		Id:   int64(segmentCopyId),
+	}
+	m.queueEvent(e)
+}
+
+func (m *Master) execLaunchCopy(segmentCopyId int64) {
+	fmt.Println("launchCopy", segmentCopyId)
+
+	tx := m.hd.Begin()
+	cp := GetSegmentCopy(tx, segmentCopyId)
+
+	if cp.Status == SEGMENT_COPY_UNASSIGNED {
+		segment := cp.GetSegment(tx)
+		rdd := segment.GetRdd(tx)
+		pj := rdd.GetProtojob(tx)
+		workers := GetAliveWorkers(tx)
+		otherCopies := segment.GetSegmentCopies(tx)
+		if len(workers) < pj.Copies+1 {
+			// Stop the event loop until enough workers join the system
+			// to meet the required replication level
+			m.increaseMinWorkersTo(int64(pj.Copies + 1))
+			e := Event{
+				Type: LAUNCH_COPY,
+				Id:   int64(cp.Id),
+			}
+			m.queueEvent(e)
+		} else {
+			// it is safe to launch the copy, so choose a random worker that
+			// doesn't already have an identical segment or a copy
+			workerIds := make(map[int64]*Worker)
+			for _, worker := range workers {
+				workerIds[int64(worker.Id)] = worker
+			}
+			sourceWorker := workerIds[segment.WorkerId]
+			delete(workerIds, segment.WorkerId)
+			for _, c := range otherCopies {
+				if c.Id != cp.Id {
+					delete(workerIds, c.WorkerId)
+				}
+			}
+			workerList := make([]*Worker, len(workerIds))
+			for _, w := range workerIds {
+				workerList = append(workerList, w)
+			}
+			worker := workerList[rand.Int()%len(workerList)]
+			cp.WorkerId = int64(worker.Id)
+			cp.Status = SEGMENT_COPY_PENDING
+			saveOrPanic(tx, cp)
+			// launch the rpc in the background
+			c := client.MakeWorkerClerk(worker.Url)
+			args := &client.CopySegmentArgs{
+				SegmentId: int64(segment.Id),
+				WorkerUrl: sourceWorker.Url,
+			}
+			go func() {
+				reply := c.CopySegment(args, 3)
+				if reply != nil {
+					if reply.Err == client.OK {
+						// task success
+						e := Event{
+							Type: COPY_SUCCESS,
+							Id:   segmentCopyId,
+						}
+						m.queueEvent(e)
+					} else {
+						if reply.Err == client.DEAD_SEGMENT {
+							fmt.Println(client.DEAD_SEGMENT)
+							// task failed due to dead segment host
+							e := Event{
+								Type: COPY_FAILURE,
+								Id:   segmentCopyId,
+							}
+							m.queueEvent(e)
+							panic("this failure case hasn't been implemented yet")
+						} else {
+							fmt.Println(client.SEGMENT_NOT_FOUND)
+							// task failed due to a segment host that forgot an RDD
+							e := Event{
+								Type: COPY_FAILURE,
+								Id:   segmentCopyId,
+							}
+							m.queueEvent(e)
+							panic("this failure case hasn't been implemented yet")
+						}
+					}
+				} else {
+					fmt.Println("DEAD_WORKER")
+					m.markDeadWorker(worker)
+					// Conclude that the worker is dead
+					e := Event{
+						Type: COPY_FAILURE,
+						Id:   segmentCopyId,
+					}
+					m.queueEvent(e)
+				}
+			}()
+		}
+	}
+
+	fmt.Println(cp)
+	commitOrPanic(tx)
 }
 
 func (m *Master) execNewBatch(workflowId int64) {
@@ -401,6 +565,7 @@ func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply
 	tx := m.hd.Begin()
 	existingWorkers := GetWorkersAtAddress(tx, args.Me)
 	for _, w := range existingWorkers {
+		// TODO: mark dead worker()
 		w.Status = WORKER_DEAD
 		tx.Save(w)
 	}
@@ -471,6 +636,7 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 
 	master.hd = hd
 	master.events = make(chan (Event), MAX_EVENTS)
+	master.minWorkers = 1
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(master)
