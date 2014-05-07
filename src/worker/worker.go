@@ -14,7 +14,10 @@ type Worker struct {
 	l      net.Listener
 	master *client.MasterClerk
 
+        batches map[int][]int64
 	segments map[int64]*Segment
+
+        max_segments int
 }
 
 func (w *Worker) Ping(args *client.PingArgs, reply *client.PingReply) error {
@@ -139,6 +142,11 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	return nil
 }
 
+func (w *Worker) DeleteBatches(args *client.DeleteArgs, reply *cient.DeleteReply) error {
+    
+  return nil
+}
+
 func StartServer(hostname string, masterhost string) *Worker {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
@@ -147,7 +155,9 @@ func StartServer(hostname string, masterhost string) *Worker {
 	fmt.Println("Starting worker")
 	worker := new(Worker)
 	worker.master = client.MakeMasterClerk(hostname, masterhost)
+        worker.batches = make(map[int][]int64)
 	worker.segments = make(map[int64]*Segment)
+        worker.max_segments = 10
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
