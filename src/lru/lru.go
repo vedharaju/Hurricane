@@ -2,6 +2,8 @@ package lru
 
 import "container/list"
 import "strconv"
+import "encoding/gob"
+import "bytes"
 
 type LRU struct{
   segments map[int64]*list.Element
@@ -52,7 +54,16 @@ func (c *LRU) Get(key int64) interface{} {  //change to return *Segment
 func findSegmentFromFile(key int64) (*Segment, error){
   segment_file := "/src/segments/segment_" + strconv.FormatInt(key, 10)
   // TODO: open file
-  // TODO: deserialize segment from file and return it
+  
+  // TODO: make buffer to deserialize from
+  var decodedSegment Segment
+  d := gob.NewDecoder(b)
+    
+  // Decoding the serialized data
+  err = d.Decode(&decodedSegment)
+  if err != nil {
+    panic(err)
+  }
 }
 
 func removeFile(key int64) error {
@@ -63,6 +74,14 @@ func removeFile(key int64) error {
 func moveToDisk(segment *Segment) error {
   segment_file := "/src/segments/segment_" // TODO: get segment_id from segment and find correct file
   // os.Open() TODO: open file
-  // TODO: serialize segment
+
+  b := new(bytes.Buffer)
+  e := gob.NewEncoder(b)
+
+  // serializing segment
+  err := e.Encode(segment)
+  if err != nil {
+    panic(err)
+  }
   // write serialized segment to file
 }
