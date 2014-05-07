@@ -289,43 +289,54 @@ func (m *Master) execTaskSuccess(segmentId int64) {
 	segment := GetSegment(tx, segmentId)
 	rdd := segment.GetRdd(tx)
 	pj := rdd.GetProtojob(tx)
+	copies := segment.GetSegmentCopies(tx)
 
-	segment.Status = SEGMENT_COMPLETE
-	saveOrPanic(tx, segment)
+	if len(copies) >= pj.Copies {
+		// If we have enough backup copies of the segment, declare completion
+		// and try launching the next layer of jobs
+		segment.Status = SEGMENT_COMPLETE
+		saveOrPanic(tx, segment)
 
-	numComplete := rdd.GetNumSegmentsComplete(tx, segment)
+		numComplete := rdd.GetNumSegmentsComplete(tx, segment)
 
-	if numComplete == pj.NumSegments {
-		fmt.Println("Job complete", rdd.Id)
-		rdd.State = RDD_COMPLETE
-		saveOrPanic(tx, rdd)
-
-		destRdds := rdd.GetDestRdds(tx)
-
-		// For each destRdd, check whether all of the srcRdds
-		// for that destRdd are complete. If so, launch the job
-		// for destRdd
-		// TODO: this logic will have to be re-written when fault-tolerance
-		// is implemented
-		for _, destRdd := range destRdds {
-			srcRdds := destRdd.GetSourceRdds(tx)
-			isComplete := true
-			for _, srcRdd := range srcRdds {
-				if (srcRdd.State != RDD_COMPLETE) && (srcRdd.Id != rdd.Id) {
-					isComplete = false
-				}
-			}
-			if isComplete {
-				e := Event{
-					Type: LAUNCH_JOB,
-					Id:   int64(destRdd.Id),
-				}
-				m.queueEvent(e)
-			}
+		if numComplete == pj.NumSegments {
+			fmt.Println("Job complete", rdd.Id)
+			rdd.State = RDD_COMPLETE
+			saveOrPanic(tx, rdd)
+			m.tryLaunchingDependentJobs(tx, rdd, pj)
 		}
+	} else {
+		// Otherwise we have to backup the segment on a different worker
 	}
 
 	commitOrPanic(tx)
+}
+
+func (m *Master) tryLaunchingDependentJobs(tx *hood.Hood, rdd *Rdd, pj *Protojob) {
+
+	destRdds := rdd.GetDestRdds(tx)
+
+	// For each destRdd, check whether all of the srcRdds
+	// for that destRdd are complete. If so, launch the job
+	// for destRdd
+	// TODO: this logic will have to be re-written when fault-tolerance
+	// is implemented
+	for _, destRdd := range destRdds {
+		srcRdds := destRdd.GetSourceRdds(tx)
+		isComplete := true
+		for _, srcRdd := range srcRdds {
+			if (srcRdd.State != RDD_COMPLETE) && (srcRdd.Id != rdd.Id) {
+				isComplete = false
+			}
+		}
+		if isComplete {
+			e := Event{
+				Type: LAUNCH_JOB,
+				Id:   int64(destRdd.Id),
+			}
+			m.queueEvent(e)
+		}
+	}
 }
 
 func (m *Master) execTaskFailure(segmentId int64) {
@@ -347,17 +358,38 @@ func (m *Master) execLaunchJob(rddId int64) {
 	// TODO: check that all of the input RDDS are available
 
 	rdd := GetRdd(tx, rddId)
-	segments := rdd.CreateSegments(tx)
 
-	commitOrPanic(tx)
+	// check whether the rdd is already complete
+	if rdd.State != RDD_COMPLETE {
+		sourceRdds := rdd.GetSourceRdds(tx)
 
-	for _, segment := range segments {
-		e := Event{
-			Type: LAUNCH_TASK,
-			Id:   int64(segment.Id),
+		readyToContinue := true
+		for _, srcRdd := range sourceRdds {
+			if srcRdd.State != RDD_COMPLETE {
+				// relaunch any dependencies that are not complete
+				readyToContinue = false
+				e := Event{
+					Type: LAUNCH_JOB,
+					Id:   int64(srcRdd.Id),
+				}
+				m.queueEvent(e)
+			}
 		}
-		m.queueEvent(e)
+
+		// If all the dependencies are met, then launch the next
+		// Rdd (dependencies are also checked for each individual task)
+		if readyToContinue {
+			segments, _ := rdd.CreateSegments(tx)
+			for _, segment := range segments {
+				e := Event{
+					Type: LAUNCH_TASK,
+					Id:   int64(segment.Id),
+				}
+				m.queueEvent(e)
+			}
+		}
 	}
+	commitOrPanic(tx)
 }
 
 //

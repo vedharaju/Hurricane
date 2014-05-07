@@ -330,6 +330,23 @@ func (segment *Segment) GetRdd(tx *hood.Hood) *Rdd {
 	}
 }
 
+func (segment *Segment) GetSegmentCopies(tx *hood.Hood) []*SegmentCopy {
+	var results []SegmentCopy
+	err := tx.Where("segment_id", "=", segment.Id).Find(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*SegmentCopy, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
 func (protojob *Protojob) GetInputEdges(tx *hood.Hood) []*WorkflowEdge {
 	var results []WorkflowEdge
 	err := tx.Where("dest_job_id", "=", protojob.Id).Find(&results)

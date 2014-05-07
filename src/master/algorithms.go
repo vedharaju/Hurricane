@@ -81,9 +81,10 @@ func (workflowBatch *WorkflowBatch) FindSourceRdds(hd *hood.Hood) []*Rdd {
 }
 
 // Create segments for a given RDD, but don't assign workers
-func (rdd *Rdd) CreateSegments(hd *hood.Hood) []*Segment {
+func (rdd *Rdd) CreateSegments(hd *hood.Hood) ([]*Segment, []*SegmentCopy) {
 	pj := rdd.GetProtojob(hd)
 	segments := make([]*Segment, pj.NumSegments)
+	segmentCopies := make([]*SegmentCopy, pj.NumSegments*pj.Copies)
 	for i := 0; i < pj.NumSegments; i++ {
 		s := &Segment{
 			RddId:    int64(rdd.Id),
@@ -93,8 +94,17 @@ func (rdd *Rdd) CreateSegments(hd *hood.Hood) []*Segment {
 		}
 		saveOrPanic(hd, s)
 		segments[i] = s
+		for j := 0; j < pj.Copies; j++ {
+			c := &SegmentCopy{
+				SegmentId: int64(s.Id),
+				WorkerId:  0,
+				Status:    0,
+			}
+			saveOrPanic(hd, c)
+			segmentCopies[i*pj.NumSegments+j] = c
+		}
 	}
-	return segments
+	return segments, segmentCopies
 }
 
 // Calculate the input segments for a given segment

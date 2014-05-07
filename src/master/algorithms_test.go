@@ -69,7 +69,7 @@ func TestCreateSegments(t *testing.T) {
 	wb := MockWorkflowBatch(hd, w)
 	rdd := MockRdd(hd, wb, j)
 
-	segments := rdd.CreateSegments(hd)
+	segments, _ := rdd.CreateSegments(hd)
 
 	if len(segments) != 2 {
 		t.Fatalf("wrong number of segments; got=%d wanted=%d", len(segments), 2)
