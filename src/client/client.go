@@ -144,6 +144,14 @@ type CopySegmentReply struct {
 	Err Err
 }
 
+type DeleteArgs struct {
+        BatchNum int
+}
+
+type DeleteReply struct {
+        Err Err
+}
+
 type WorkerClerk struct {
 	hostname string
 }
