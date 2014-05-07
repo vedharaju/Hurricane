@@ -98,7 +98,7 @@ func (rdd *Rdd) CreateSegments(hd *hood.Hood) []*Segment {
 }
 
 // Calculate the input segments for a given segment
-func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*client.SegmentInput {
+func (segment *Segment) CalculateInputSegments(hd *hood.Hood) ([]*client.SegmentInput, []*Rdd) {
 	rdd := segment.GetRdd(hd)
 	pj := rdd.GetProtojob(hd)
 
@@ -132,6 +132,13 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*client.SegmentI
 		workerMap[int64(worker.Id)] = worker
 	}
 
+	missingRdds := make([]*Rdd, 0)
+	for _, rdd := range sourceRdds {
+		if rdd.State != RDD_COMPLETE {
+			missingRdds = append(missingRdds, rdd)
+		}
+	}
+
 	output := make([]*client.SegmentInput, 0)
 
 	for _, inputRddEdge := range inputRddEdges {
@@ -162,5 +169,5 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) []*client.SegmentI
 		}
 	}
 
-	return output
+	return output, missingRdds
 }

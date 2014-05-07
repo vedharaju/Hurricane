@@ -170,87 +170,103 @@ func (m *Master) execLaunchTask(segmentId int64) {
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
-	rdd := segment.GetRdd(tx)
-	batch := rdd.GetWorkflowBatch(tx)
-	pj := rdd.GetProtojob(tx)
-	worker := GetRandomAliveWorker(tx)
-	workflow := batch.GetWorkflow(tx)
-	if worker != nil {
-		segment.WorkerId = int64(worker.Id)
-	} else {
-		segment.WorkerId = 0
-	}
-	saveOrPanic(tx, segment)
-	commitOrPanic(tx)
 
-	if segment.WorkerId != 0 {
-		// if a worker was availble, launch the task
-		tx = m.hd.Begin()
-		inputs := segment.CalculateInputSegments(tx)
-		commitOrPanic(tx)
+	if segment.Status == SEGMENT_UNASSIGNED {
+		worker := GetRandomAliveWorker(tx)
 
-		command := preprocessMasterCommand(pj.Command, batch, segment, workflow)
-
-		args := &client.ExecArgs{
-			Command:         command,
-			Segments:        inputs,
-			OutputSegmentId: int64(segment.Id),
-			Indices:         parseIndex(pj.PartitionIndex),
-			Parts:           pj.NumBuckets,
+		if worker != nil {
+			segment.WorkerId = int64(worker.Id)
+		} else {
+			segment.WorkerId = 0
 		}
+		saveOrPanic(tx, segment)
 
-		c := client.MakeWorkerClerk(worker.Url)
-
-		go func() {
-			reply := c.ExecTask(args, 3)
-			if reply != nil {
-				if reply.Err == client.OK {
-					// task success
+		if segment.WorkerId != 0 {
+			// if a worker was availble
+			inputs, missingRdds := segment.CalculateInputSegments(tx)
+			if len(missingRdds) != 0 {
+				// if any of the input rdds are incomplete, then re-execute them
+				for _, rdd := range missingRdds {
 					e := Event{
-						Type: TASK_SUCCESS,
-						Id:   segmentId,
+						Type: LAUNCH_JOB,
+						Id:   int64(rdd.Id),
 					}
 					m.queueEvent(e)
-				} else {
-					if reply.Err == client.DEAD_SEGMENT {
-						fmt.Println(client.DEAD_SEGMENT)
-						// task failed due to dead segment host
-						e := Event{
-							Type: TASK_FAILURE,
-							Id:   segmentId,
-						}
-						m.queueEvent(e)
-						panic("this failure case hasn't been implemented yet")
-					} else {
-						fmt.Println(client.SEGMENT_NOT_FOUND)
-						// task failed due to a segment host that forgot an RDD
-						e := Event{
-							Type: TASK_FAILURE,
-							Id:   segmentId,
-						}
-						m.queueEvent(e)
-						panic("this failure case hasn't been implemented yet")
-					}
 				}
 			} else {
-				fmt.Println("DEAD_WORKER")
-				m.markDeadWorker(worker)
-				// Conclude that the worker is dead
-				e := Event{
-					Type: TASK_FAILURE,
-					Id:   segmentId,
+				// otherwise, launch the task
+				rdd := segment.GetRdd(tx)
+				pj := rdd.GetProtojob(tx)
+				batch := rdd.GetWorkflowBatch(tx)
+				workflow := batch.GetWorkflow(tx)
+				commitOrPanic(tx)
+
+				command := preprocessMasterCommand(pj.Command, batch, segment, workflow)
+
+				args := &client.ExecArgs{
+					Command:         command,
+					Segments:        inputs,
+					OutputSegmentId: int64(segment.Id),
+					Indices:         parseIndex(pj.PartitionIndex),
+					Parts:           pj.NumBuckets,
 				}
-				m.queueEvent(e)
+
+				c := client.MakeWorkerClerk(worker.Url)
+
+				// Launch the task on a background goroutine
+				go func() {
+					reply := c.ExecTask(args, 3)
+					if reply != nil {
+						if reply.Err == client.OK {
+							// task success
+							e := Event{
+								Type: TASK_SUCCESS,
+								Id:   segmentId,
+							}
+							m.queueEvent(e)
+						} else {
+							if reply.Err == client.DEAD_SEGMENT {
+								fmt.Println(client.DEAD_SEGMENT)
+								// task failed due to dead segment host
+								e := Event{
+									Type: TASK_FAILURE,
+									Id:   segmentId,
+								}
+								m.queueEvent(e)
+								panic("this failure case hasn't been implemented yet")
+							} else {
+								fmt.Println(client.SEGMENT_NOT_FOUND)
+								// task failed due to a segment host that forgot an RDD
+								e := Event{
+									Type: TASK_FAILURE,
+									Id:   segmentId,
+								}
+								m.queueEvent(e)
+								panic("this failure case hasn't been implemented yet")
+							}
+						}
+					} else {
+						fmt.Println("DEAD_WORKER")
+						m.markDeadWorker(worker)
+						// Conclude that the worker is dead
+						e := Event{
+							Type: TASK_FAILURE,
+							Id:   segmentId,
+						}
+						m.queueEvent(e)
+					}
+				}()
 			}
-		}()
-	} else {
-		// if no workers are available, just re-queue the task
-		fmt.Println("no workers available")
-		e := Event{
-			Type: LAUNCH_TASK,
-			Id:   segmentId,
+		} else {
+			// if no workers are available, just re-queue the task
+			fmt.Println("no workers available")
+			e := Event{
+				Type: LAUNCH_TASK,
+				Id:   segmentId,
+			}
+			m.queueEvent(e)
+			commitOrPanic(tx)
 		}
-		m.queueEvent(e)
 	}
 }
 
