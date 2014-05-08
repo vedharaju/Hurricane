@@ -155,11 +155,11 @@ type CopySegmentReply struct {
 }
 
 type DeleteArgs struct {
-        BatchNum int
+	BatchNum int
 }
 
 type DeleteReply struct {
-        Err Err
+	Err Err
 }
 
 type WorkerClerk struct {
