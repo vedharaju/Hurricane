@@ -53,21 +53,18 @@ func (c *LRU) Get(key int64) *Segment { //change to return *Segment
 	if cached {
 		c.lru.MoveToFront(s)
 		return s.Value.(*Segment)
-	} else {
+	} else if c.exists[key] {
 		segment := c.findSegmentFromFile(key)
 
 		c.removeFile(key)
 		c.Insert(key, segment)
 		return segment
+	} else {
+		return nil
 	}
 }
 
 func (c *LRU) findSegmentFromFile(key int64) *Segment {
-	_, ok := c.exists[key]
-	if !ok {
-		return nil
-	}
-
 	gopath := os.Getenv("GOPATH")
 	segment_file := path.Join(gopath, c.filepath+strconv.FormatInt(key, 10))
 	file, err := os.Open(segment_file) // For read access.
