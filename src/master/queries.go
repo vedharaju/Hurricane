@@ -480,8 +480,8 @@ func (rdd *Rdd) GetNumSegmentsComplete(tx *hood.Hood, include *Segment) int {
 	err := tx.FindSql(&results,
 		`select count(*) as value
     from segment
-    where (rdd_id = $1 and status=1)
-    or id = $2`, rdd.Id, include.Id)
+    where (rdd_id = $1 and status=$3)
+    or id = $2`, rdd.Id, include.Id, SEGMENT_COMPLETE)
 	if err != nil {
 		panic(err)
 	}
@@ -508,7 +508,7 @@ func GetNumAliveWorkers(tx *hood.Hood) int {
 	err := tx.FindSql(&results,
 		`select count(*) as value
     from worker
-    where status=0`)
+    where status=$1`, WORKER_ALIVE)
 	if err != nil {
 		panic(err)
 	}
@@ -521,9 +521,9 @@ func GetRandomAliveWorker(tx *hood.Hood) *Worker {
 	err := tx.FindSql(&results,
 		`select *
     from worker
-    where status=0
+    where status=$1
     order by random()
-    limit 1`)
+    limit 1`, WORKER_ALIVE)
 	if err != nil {
 		panic(err)
 	}

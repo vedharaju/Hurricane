@@ -95,7 +95,7 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	var inputTuples []Tuple
 	fmt.Println("executing task", args)
 	for _, segment := range args.Segments {
-		fmt.Println("fetching segment", segment)
+		fmt.Println("fetching tuples", segment)
 		clerk := MakeWorkerInternalClerk(segment.WorkerUrl)
 		args2 := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 		reply2 := clerk.GetTuples(&args2, 3)

@@ -363,6 +363,7 @@ func (m *Master) execLaunchTask(segmentId int64) {
 				pj := rdd.GetProtojob(tx)
 				batch := rdd.GetWorkflowBatch(tx)
 				workflow := batch.GetWorkflow(tx)
+				segmentCopies := segment.GetSegmentCopies(tx)
 				commitOrPanic(tx)
 
 				command := preprocessMasterCommand(pj.Command, batch, segment, workflow)
@@ -383,11 +384,21 @@ func (m *Master) execLaunchTask(segmentId int64) {
 					if reply != nil {
 						if reply.Err == client.OK {
 							// task success
-							e := Event{
-								Type: TASK_SUCCESS,
-								Id:   segmentId,
+							if len(segmentCopies) > 0 {
+								for _, cp := range segmentCopies {
+									e := Event{
+										Type: LAUNCH_COPY,
+										Id:   int64(cp.Id),
+									}
+									m.queueEvent(e)
+								}
+							} else {
+								e := Event{
+									Type: TASK_SUCCESS,
+									Id:   segmentId,
+								}
+								m.queueEvent(e)
 							}
-							m.queueEvent(e)
 						} else {
 							if reply.Err == client.DEAD_SEGMENT {
 								fmt.Println(client.DEAD_SEGMENT)
@@ -447,30 +458,20 @@ func (m *Master) execTaskSuccess(segmentId int64) {
 	fmt.Println("execTaskSuccess", segmentId)
 	tx := m.hd.Begin()
 
-	// TODO: must verify that all segments are on living nodes, otherwise
-	// must trigger re-computation of RDDs
-
 	segment := GetSegment(tx, segmentId)
 	rdd := segment.GetRdd(tx)
 	pj := rdd.GetProtojob(tx)
-	copies := segment.GetSegmentCopies(tx)
 
-	if len(copies) >= pj.Copies {
-		// If we have enough backup copies of the segment, declare completion
-		// and try launching the next layer of jobs
-		segment.Status = SEGMENT_COMPLETE
-		saveOrPanic(tx, segment)
+	segment.Status = SEGMENT_COMPLETE
+	saveOrPanic(tx, segment)
 
-		numComplete := rdd.GetNumSegmentsComplete(tx, segment)
+	numComplete := rdd.GetNumSegmentsComplete(tx, segment)
 
-		if numComplete == pj.NumSegments {
-			fmt.Println("Job complete", rdd.Id)
-			rdd.State = RDD_COMPLETE
-			saveOrPanic(tx, rdd)
-			m.tryLaunchingDependentJobs(tx, rdd, pj)
-		}
-	} else {
-		// Otherwise we have to backup the segment on a different worker
+	if numComplete == pj.NumSegments {
+		fmt.Println("Job complete", rdd.Id)
+		rdd.State = RDD_COMPLETE
+		saveOrPanic(tx, rdd)
+		m.tryLaunchingDependentJobs(tx, rdd, pj)
 	}
 
 	commitOrPanic(tx)
