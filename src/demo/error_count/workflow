@@ -2,7 +2,7 @@ d=1000
 
 JOBS
 
-A: @/src/demo/error_count/input.udf ;; r=true & p=(0) & w=1 & b=1
+A: @/src/demo/error_count/input.udf now 60 2000 5 ;; r=true & p=(0) & w=1 & b=1
 B: @/src/demo/error_count/map.udf ;; r=true & p=(0) & w=1 & b=1
 C: @/src/demo/error_count/reduce.udf ;; r=true & p=(0) & w=1 & b=1
 D: @/src/demo/error_count/output.udf ;; r=true & p=(0) & w=1 & b=1
