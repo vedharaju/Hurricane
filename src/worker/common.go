@@ -140,6 +140,7 @@ func TupleToPartition(tuple Tuple, indices []int, parts int) int {
 
 type Segment struct {
 	Partitions [][]Tuple
+        Id int64
 }
 
 func MakeSegment(tuples []Tuple, indices []int, parts int) *Segment {
