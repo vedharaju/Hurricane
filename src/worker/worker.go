@@ -160,6 +160,11 @@ func StartServer(hostname string, masterhost string) *Worker {
 	}
 	worker.l = l
 
+	// Register the worker to master
+	fmt.Println("Registering worker")
+	worker.master.Register(true)
+	fmt.Println("Registered worker")
+
 	go func() {
 		for {
 			if conn, err := worker.l.Accept(); err == nil {
@@ -170,11 +175,6 @@ func StartServer(hostname string, masterhost string) *Worker {
 			}
 		}
 	}()
-
-	// Register the worker to master
-	fmt.Println("Registering worker")
-	worker.master.Register(true)
-	fmt.Println("Registered worker")
 
 	return worker
 }
