@@ -35,7 +35,7 @@ func (w *Worker) kill() {
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	fmt.Println("GET TUPLES RPC")
 	if args.WorkerId != w.master.GetId() {
-		segment := w.segments.Get(args.SegmentId)
+		segment := w.LocalGetSegment(args.SegmentId)
 		if segment != nil {
 			reply.Tuples = segment.Partitions[args.PartitionIndex]
 			reply.Err = client.OK
@@ -53,7 +53,7 @@ func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 func (w *Worker) GetSegment(args *GetSegmentArgs, reply *GetSegmentReply) error {
 	fmt.Println("GET SEGMENT RPC")
 	if args.WorkerId != w.master.GetId() {
-		segment := w.segments.Get(args.SegmentId)
+		segment := w.LocalGetSegment(args.SegmentId)
 		if segment != nil {
 			reply.Segment = segment
 			reply.Err = client.OK

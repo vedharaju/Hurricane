@@ -43,6 +43,9 @@ func commitOrPanic(tx *hood.Hood) {
 func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
 	fmt.Println("Pinging", args.Id)
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	tx := m.hd.Begin()
 	w := GetWorker(m.hd, args.Id)
 	if w != nil {
@@ -134,7 +137,10 @@ func (m *Master) queueEvent(e Event) {
 func (m *Master) execCopySuccess(segmentCopyId int64, data interface{}) {
 	fmt.Println("copySuccess", segmentCopyId)
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
+
 	cp := GetSegmentCopy(tx, segmentCopyId)
 	cp.Status = SEGMENT_COPY_COMPLETE
 	saveOrPanic(tx, cp)
@@ -167,6 +173,10 @@ func (m *Master) execCopySuccess(segmentCopyId int64, data interface{}) {
 
 func (m *Master) execCopyFailure(segmentCopyId int64, data interface{}) {
 	fmt.Println("copyFailure", segmentCopyId)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.HandleFailureData(data.(*FailureData))
 	e := Event{
 		Type: LAUNCH_COPY,
@@ -178,7 +188,10 @@ func (m *Master) execCopyFailure(segmentCopyId int64, data interface{}) {
 func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 	fmt.Println("launchCopy", segmentCopyId)
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
+
 	cp := GetSegmentCopy(tx, segmentCopyId)
 
 	if cp.Status == SEGMENT_COPY_UNASSIGNED {
@@ -295,6 +308,9 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 
 func (m *Master) execNewBatch(workflowId int64, data interface{}) {
 	fmt.Println("execNewBatch", workflowId)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
 
 	// look up workflow
@@ -361,6 +377,9 @@ func preprocessMasterCommand(cmd string, batch *WorkflowBatch, segment *Segment,
 
 func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 	fmt.Println("execLaunchTask", segmentId)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
@@ -486,6 +505,9 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 
 func (m *Master) execTaskSuccess(segmentId int64, data interface{}) {
 	fmt.Println("execTaskSuccess", segmentId)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
 
 	segment := GetSegment(tx, segmentId)
@@ -536,6 +558,10 @@ func (m *Master) tryLaunchingDependentJobs(tx *hood.Hood, rdd *Rdd, pj *Protojob
 
 func (m *Master) execTaskFailure(segmentId int64, data interface{}) {
 	fmt.Println("execTaskFailure", segmentId)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.HandleFailureData(data.(*FailureData))
 	e := Event{
 		Type: LAUNCH_TASK,
@@ -546,6 +572,9 @@ func (m *Master) execTaskFailure(segmentId int64, data interface{}) {
 
 func (m *Master) execLaunchJob(rddId int64, data interface{}) {
 	fmt.Println("execLaunchJob", rddId)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
 
 	// TODO: check that all of the input RDDS are available
@@ -590,6 +619,9 @@ func (m *Master) execLaunchJob(rddId int64, data interface{}) {
 //
 func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply) error {
 	fmt.Println("Registering", args)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	tx := m.hd.Begin()
 	existingWorkers := GetWorkersAtAddress(tx, args.Me)
