@@ -87,11 +87,15 @@ func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySeg
 			reply.Err = client.OK
 		} else {
 			reply.Err = reply2.Err
+			reply.WorkerId = args.WorkerId
 			fmt.Println(reply.Err)
+			return nil
 		}
 	} else {
 		reply.Err = client.DEAD_SEGMENT
+		reply.WorkerId = args.WorkerId
 		fmt.Println(reply.Err)
+		return nil
 	}
 	return nil
 }
@@ -113,11 +117,13 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 					inputTuples = append(inputTuples, reply2.Tuples...)
 				} else {
 					reply.Err = reply2.Err
+					reply.WorkerId = segment.WorkerId
 					fmt.Println(reply.Err)
 					return nil
 				}
 			} else {
 				reply.Err = client.DEAD_SEGMENT
+				reply.WorkerId = segment.WorkerId
 				fmt.Println(reply.Err)
 				return nil
 			}

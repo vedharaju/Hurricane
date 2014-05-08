@@ -120,6 +120,7 @@ type SegmentInput struct {
 	SegmentId      int64
 	PartitionIndex int
 	WorkerUrl      string
+	WorkerId       int64
 	Index          int
 }
 
@@ -133,15 +134,20 @@ type ExecArgs struct {
 
 type ExecReply struct {
 	Err Err
+	// Id of worker that we failed to fetch segment from
+	WorkerId int64
 }
 
 type CopySegmentArgs struct {
 	SegmentId int64
 	WorkerUrl string
+	WorkerId  int64
 }
 
 type CopySegmentReply struct {
 	Err Err
+	// Id of worker that we failed to fetch segment from
+	WorkerId int64
 }
 
 type DeleteArgs struct {

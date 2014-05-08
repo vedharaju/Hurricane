@@ -29,4 +29,5 @@ type EventType int
 type Event struct {
 	Type EventType
 	Id   int64
+	Data int64
 }

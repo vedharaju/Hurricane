@@ -364,6 +364,28 @@ func (segment *Segment) GetSegmentCopies(tx *hood.Hood) []*SegmentCopy {
 	return pointerResults
 }
 
+func (rdd *Rdd) GetSegmentCopies(tx *hood.Hood) []*SegmentCopy {
+	var results []SegmentCopy
+	err := tx.FindSql(&results,
+		`select segment_copy.*
+    from segment_copy
+    inner join segment
+    on segment_copy.segment_id = segment.id
+    where segment.rdd_id = $1`, rdd.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*SegmentCopy, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
 func GetSegmentCopy(tx *hood.Hood, segmentCopyId int64) *SegmentCopy {
 	var results []SegmentCopy
 	err := tx.Where("id", "=", segmentCopyId).Find(&results)

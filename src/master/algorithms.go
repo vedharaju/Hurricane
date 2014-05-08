@@ -156,6 +156,12 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) ([]*client.Segment
 		sourceRdd := sourceRddMap[inputRddEdge.SourceRddId]
 		sourcePj := sourceProtojobMap[sourceRdd.ProtojobId]
 		sourceSegments := sourceRdd.GetSegments(hd)
+		sourceSegmentCopies := sourceRdd.GetSegmentCopies(hd)
+		// group the segment copies by segment id
+		segmentCopyMap := make(map[int64][]*SegmentCopy)
+		for _, cp := range sourceSegmentCopies {
+			segmentCopyMap[cp.SegmentId] = append(segmentCopyMap[cp.SegmentId], cp)
+		}
 		for _, sourceSegment := range sourceSegments {
 			for i := 0; i < sourcePj.NumBuckets; i++ {
 				// calculate the assignment for the source segment
@@ -167,13 +173,34 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) ([]*client.Segment
 				}
 				// is the source segment assigned to this one?
 				if segmentAssignment == segment.Index {
-					input := &client.SegmentInput{
-						SegmentId:      int64(sourceSegment.Id),
-						PartitionIndex: i,
-						WorkerUrl:      workerMap[sourceSegment.WorkerId].Url,
-						Index:          inputWorkflowEdge.Index,
+					// find a worker that is alive and contains this segment
+					// first check the master replica
+					masterWorker := workerMap[sourceSegment.WorkerId]
+					var worker *Worker
+					if masterWorker.Status != WORKER_ALIVE {
+						// check if any of the replicas are alive
+						for _, cp := range segmentCopyMap[int64(sourceSegment.Id)] {
+							backupWorker := workerMap[cp.WorkerId]
+							if backupWorker.Status == WORKER_ALIVE {
+								worker = backupWorker
+							}
+						}
+					} else {
+						worker = masterWorker
 					}
-					output = append(output, input)
+					if worker != nil {
+						// if a living worker was found
+						input := &client.SegmentInput{
+							SegmentId:      int64(sourceSegment.Id),
+							PartitionIndex: i,
+							WorkerUrl:      worker.Url,
+							WorkerId:       int64(worker.Id),
+							Index:          inputWorkflowEdge.Index,
+						}
+						output = append(output, input)
+					} else {
+						// else, mark this RDD as being incomplete
+					}
 				}
 			}
 		}

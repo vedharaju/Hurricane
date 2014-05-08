@@ -214,6 +214,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64) {
 			args := &client.CopySegmentArgs{
 				SegmentId: int64(segment.Id),
 				WorkerUrl: sourceWorker.Url,
+				WorkerId:  int64(sourceWorker.Id),
 			}
 			go func() {
 				reply := c.CopySegment(args, 3)
@@ -591,8 +592,7 @@ func (m *Master) getNumAliveWorkers() {
 }
 
 //
-// tick() is called once per TickInterval; it should notice
-// if servers have died or recovered.
+// tick() is called once per TickInterval
 //
 // Additionally, it should trigger newBatch events when necessary.
 //
@@ -601,9 +601,6 @@ func (m *Master) getNumAliveWorkers() {
 // Instead, crash gracefully.
 //
 func (m *Master) tick() {
-	// TODO: Clean dead servers
-
-	// TODO: Launch new batches
 	tx := m.hd.Begin()
 
 	// Don't launch new batches if the event queue is more than half full
@@ -617,6 +614,8 @@ func (m *Master) tick() {
 			}
 			m.queueEvent(e)
 		}
+	} else {
+		fmt.Println("EVENT QUEUE IS ALMOST FULL!! SOMETHING IS WRONG!!")
 	}
 
 	commitOrPanic(tx)
