@@ -4,4 +4,4 @@ src/github.com
 pkg/
 tags
 *.udf
-src/main/log.txt
+src/demo/error_count/log.txt
