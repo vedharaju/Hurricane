@@ -33,7 +33,6 @@ func main() {
 		}
 
 		tuple := worker.Tuple{s}
-
 		stdout.Write(tuple.SerializeTuple(0))
 		stdout.Write([]byte{'\n'})
 	}
