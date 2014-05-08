@@ -3,3 +3,4 @@ env.local
 src/github.com
 pkg/
 tags
+*.udf

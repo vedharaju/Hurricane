@@ -7,6 +7,7 @@ import "sync"
 import "log"
 import "strings"
 import "client"
+import "time"
 
 type Worker struct {
 	mu     sync.Mutex
@@ -123,7 +124,10 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	}
 
 	fmt.Println("running udf")
+	start := time.Now()
 	outputTuples := runUDF(args.Command, inputTuples)
+	end := time.Now()
+	fmt.Println("duration:", end.Sub(start))
 	fmt.Println("got output tuples", len(outputTuples))
 
 	fmt.Println("writing segment")
