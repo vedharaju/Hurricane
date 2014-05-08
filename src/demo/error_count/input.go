@@ -4,20 +4,18 @@ import "os"
 import "syscall"
 import "worker"
 import "time"
-import "strconv"
 import "math/rand"
 
 // go run input.go start_time duration number_of_log random_seed
 // go run input.go now 60 2000 5
 func main() {
-	d, _ := strconv.Atoi(os.Args[2])
-	duration := time.Second * time.Duration(d)
+	duration := time.Second * 60
 
-	startTime := time.Now() // os.Args[1]
+	startTime := time.Now()
 
-	num, _ := strconv.Atoi(os.Args[3])
+	num  := 2000
 
-	seed, _ := strconv.ParseInt(os.Args[4], 10, 64)
+	seed := int64(10)
 
 	stdout := os.NewFile(uintptr(syscall.Stdout), "/dev/stdout")
 

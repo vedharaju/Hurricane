@@ -2,9 +2,13 @@ d=1000
 
 JOBS
 
-A: @/src/demo/error_count/input.udf ;; r=true & p=(0) & w=1 & b=1
-B: @/src/demo/wordcount_go/output.udf ;; r=true & p=(0) & w=1 & b=1
+A: @/src/demo/wordcount_go/input.udf ;; r=true & p=(0) & w=1 & b=1
+B: @/src/demo/wordcount_go/map.udf ;; r=true & p=(0) & w=1 & b=10
+C: @/src/demo/wordcount_go/reduce.udf ;; r=true & p=(0) & w=1 & b=1
+D: @/src/demo/wordcount_go/output.udf ;; r=true & p=(0) & w=1 & b=1
 
 WORKFLOW
 
 A -> B
+B -> C
+C -> D
