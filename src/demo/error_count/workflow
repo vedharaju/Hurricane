@@ -1,0 +1,10 @@
+d=1000
+
+JOBS
+
+A: @/src/demo/error_count/input.udf ;; r=true & p=(0) & w=1 & b=1
+B: @/src/demo/wordcount_go/output.udf ;; r=true & p=(0) & w=1 & b=1
+
+WORKFLOW
+
+A -> B
