@@ -17,13 +17,14 @@ type LRU struct {
 	segments map[int64]*list.Element
 	lru      *list.List
 	capacity int
+	filepath string
 }
 
-func NewLRU(capacity int) *LRU {
+func NewLRU(capacity int, wid int64) *LRU {
 	if capacity < 1 {
 		panic("capacity < 1")
 	}
-	c := &LRU{segments: make(map[int64]*list.Element), lru: list.New(), capacity: capacity}
+	c := &LRU{segments: make(map[int64]*list.Element), lru: list.New(), capacity: capacity, filepath: "/src/segments/segment" + strconv.FormatInt(wid, 10) + "_"}
 	return c
 }
 
@@ -35,7 +36,7 @@ func (c *LRU) evictAsNecessary() {
 	for c.Length() > c.capacity {
 		segment := c.lru.Remove(c.lru.Back()).(*Segment)
 		delete(c.segments, segment.Id) //delete this segment from the map
-		moveToDisk(segment)
+		c.moveToDisk(segment)
 	}
 }
 
@@ -51,17 +52,17 @@ func (c *LRU) Get(key int64) *Segment { //change to return *Segment
 		c.lru.MoveToFront(s)
 		return s.Value.(*Segment)
 	} else {
-		segment := findSegmentFromFile(key)
+		segment := c.findSegmentFromFile(key)
 
-		removeFile(key)
+		c.removeFile(key)
 		c.Insert(key, segment)
 		return segment
 	}
 }
 
-func findSegmentFromFile(key int64) *Segment {
+func (c *LRU) findSegmentFromFile(key int64) *Segment {
 	gopath := os.Getenv("GOPATH")
-	segment_file := path.Join(gopath, "/src/segments/segment_"+strconv.FormatInt(key, 10))
+	segment_file := path.Join(gopath, c.filepath+strconv.FormatInt(key, 10))
 	file, err := os.Open(segment_file) // For read access.
 	defer file.Close()
 	if err != nil {
@@ -80,9 +81,9 @@ func findSegmentFromFile(key int64) *Segment {
 	return decodedSegment
 }
 
-func removeFile(key int64) error {
+func (c *LRU) removeFile(key int64) error {
 	gopath := os.Getenv("GOPATH")
-	segment_file := path.Join(gopath, "/src/segments/segment_"+strconv.FormatInt(key, 10))
+	segment_file := path.Join(gopath, c.filepath+strconv.FormatInt(key, 10))
 	err := os.Remove(segment_file)
 	if err != nil {
 		panic(err)
@@ -90,9 +91,9 @@ func removeFile(key int64) error {
 	return nil
 }
 
-func moveToDisk(segment *Segment) error {
+func (c *LRU) moveToDisk(segment *Segment) error {
 	gopath := os.Getenv("GOPATH")
-	segment_file := path.Join(gopath, "/src/segments/segment_"+strconv.FormatInt(segment.Id, 10))
+	segment_file := path.Join(gopath, c.filepath+strconv.FormatInt(segment.Id, 10))
 	file, err := os.Create(segment_file)
 	defer file.Close()
 	if err != nil {

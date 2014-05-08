@@ -21,7 +21,7 @@ func TestLRU(t *testing.T) {
 	segment2.Partitions[1] = []Tuple{tuple2, tuple4}
 	segment2.Id = 1111
 
-	lru := NewLRU(1)
+	lru := NewLRU(1, 4)
 	lru.Insert(1234, &segment1)
 	lru.Insert(1111, &segment2)
 	s := lru.Get(1234)

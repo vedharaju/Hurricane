@@ -176,7 +176,6 @@ func StartServer(hostname string, masterhost string) *Worker {
 	worker.master = client.MakeMasterClerk(hostname, masterhost)
 	worker.batches = make(map[int][]int64)
 	worker.max_segments = 10
-	worker.segments = NewLRU(worker.max_segments)
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
@@ -193,6 +192,8 @@ func StartServer(hostname string, masterhost string) *Worker {
 	fmt.Println("Registering worker")
 	worker.master.Register(true)
 	fmt.Println("Registered worker")
+
+	worker.segments = NewLRU(worker.max_segments, worker.master.GetId())
 
 	go func() {
 		for {
