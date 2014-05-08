@@ -278,7 +278,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 							Id:   segmentCopyId,
 							Data: &FailureData{
 								Type:     FAILURE_DEAD_WORKER,
-								WorkerId: int64(sourceWorker.Id),
+								WorkerId: int64(worker.Id),
 							},
 						}
 						m.queueEvent(e)
