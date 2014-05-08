@@ -67,26 +67,24 @@ func (w *Worker) LocalPutSegment(segmentId int64, segment *Segment) {
 func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySegmentReply) error {
 	fmt.Println("copying segment", args)
 	if w.LocalGetSegment(args.SegmentId) != nil {
-		fmt.Println("already have segment")
-	} else {
-		fmt.Println("fetching segment", args.SegmentId)
-		clerk := MakeWorkerInternalClerk(args.WorkerUrl)
-		args2 := GetSegmentArgs{SegmentId: args.SegmentId}
-		reply2 := clerk.GetSegment(&args2, 3)
-		if reply2 != nil {
-			if reply2.Err == client.OK {
-				fmt.Println("fetched segment", args.SegmentId)
-				w.LocalPutSegment(args.SegmentId, reply2.Segment)
-			} else {
-				reply.Err = reply2.Err
-				fmt.Println(reply.Err)
-				return nil
-			}
+		fmt.Println("already have segment, overwriting...")
+	}
+	fmt.Println("fetching segment", args.SegmentId)
+	clerk := MakeWorkerInternalClerk(args.WorkerUrl)
+	args2 := GetSegmentArgs{SegmentId: args.SegmentId}
+	reply2 := clerk.GetSegment(&args2, 3)
+	if reply2 != nil {
+		if reply2.Err == client.OK {
+			fmt.Println("fetched segment", args.SegmentId)
+			w.LocalPutSegment(args.SegmentId, reply2.Segment)
+			reply.Err = client.OK
 		} else {
-			reply.Err = client.DEAD_SEGMENT
+			reply.Err = reply2.Err
 			fmt.Println(reply.Err)
-			return nil
 		}
+	} else {
+		reply.Err = client.DEAD_SEGMENT
+		fmt.Println(reply.Err)
 	}
 	return nil
 }

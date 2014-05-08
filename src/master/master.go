@@ -180,6 +180,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64) {
 		if len(workers) < pj.Copies+1 {
 			// Stop the event loop until enough workers join the system
 			// to meet the required replication level
+			fmt.Println("not enough workers, need at least", pj.Copies+1)
 			m.increaseMinWorkersTo(int64(pj.Copies + 1))
 			e := Event{
 				Type: LAUNCH_COPY,
@@ -200,7 +201,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64) {
 					delete(workerIds, c.WorkerId)
 				}
 			}
-			workerList := make([]*Worker, len(workerIds))
+			workerList := make([]*Worker, 0, len(workerIds))
 			for _, w := range workerIds {
 				workerList = append(workerList, w)
 			}
@@ -259,7 +260,6 @@ func (m *Master) execLaunchCopy(segmentCopyId int64) {
 		}
 	}
 
-	fmt.Println(cp)
 	commitOrPanic(tx)
 }
 

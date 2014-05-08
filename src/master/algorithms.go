@@ -101,7 +101,7 @@ func (rdd *Rdd) CreateSegments(hd *hood.Hood) ([]*Segment, []*SegmentCopy) {
 				Status:    0,
 			}
 			saveOrPanic(hd, c)
-			segmentCopies[i*pj.NumSegments+j] = c
+			segmentCopies[i*pj.Copies+j] = c
 		}
 	}
 	return segments, segmentCopies
