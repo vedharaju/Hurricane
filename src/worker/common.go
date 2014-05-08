@@ -48,6 +48,7 @@ func (ck *WorkerInternalClerk) GetSegment(args *GetSegmentArgs, numRetries int) 
 type GetTuplesArgs struct {
 	SegmentId      int64
 	PartitionIndex int
+	WorkerId       int64
 }
 
 type GetTuplesReply struct {
@@ -57,6 +58,7 @@ type GetTuplesReply struct {
 
 type GetSegmentArgs struct {
 	SegmentId int64
+	WorkerId  int64
 }
 
 type GetSegmentReply struct {

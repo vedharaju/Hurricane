@@ -22,12 +22,22 @@ const (
 	COPY_SUCCESS = 5
 	COPY_FAILURE = 6
 	LAUNCH_COPY  = 7
+
+	FAILURE_DEAD_WORKER     = 0
+	FAILURE_DEAD_SEGMENT    = 1
+	FAILURE_MISSING_SEGMENT = 2
 )
 
 type EventType int
+type FailureType int
 
 type Event struct {
 	Type EventType
 	Id   int64
-	Data int64
+	Data interface{}
+}
+
+type FailureData struct {
+	Type     FailureType
+	WorkerId int64
 }

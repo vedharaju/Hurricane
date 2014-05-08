@@ -34,24 +34,36 @@ func (w *Worker) kill() {
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	fmt.Println("GET TUPLES RPC")
-	segment := w.segments.Get(args.SegmentId)
-	if segment != nil {
-		reply.Tuples = segment.Partitions[args.PartitionIndex]
-		reply.Err = client.OK
+	if args.WorkerId != w.master.GetId() {
+		segment := w.segments[args.SegmentId]
+		if segment != nil {
+			reply.Tuples = segment.Partitions[args.PartitionIndex]
+			reply.Err = client.OK
+		} else {
+			reply.Err = client.SEGMENT_NOT_FOUND
+		}
 	} else {
-		reply.Err = client.SEGMENT_NOT_FOUND
+		// The request is old, and this worker has died, rebooted,
+		// and re-registered
+		reply.Err = client.DEAD_SEGMENT
 	}
 	return nil
 }
 
 func (w *Worker) GetSegment(args *GetSegmentArgs, reply *GetSegmentReply) error {
 	fmt.Println("GET SEGMENT RPC")
-	segment := w.segments.Get(args.SegmentId)
-	if segment != nil {
-		reply.Segment = segment
-		reply.Err = client.OK
+	if args.WorkerId != w.master.GetId() {
+		segment := w.segments[args.SegmentId]
+		if segment != nil {
+			reply.Segment = segment
+			reply.Err = client.OK
+		} else {
+			reply.Err = client.SEGMENT_NOT_FOUND
+		}
 	} else {
-		reply.Err = client.SEGMENT_NOT_FOUND
+		// The request is old, and this worker has died, rebooted,
+		// and re-registered
+		reply.Err = client.DEAD_SEGMENT
 	}
 	return nil
 }

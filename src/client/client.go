@@ -62,6 +62,10 @@ func CallRPC(srv string, rpcname string, args interface{}, reply interface{}) bo
 	return false
 }
 
+func (ck *MasterClerk) GetId() int64 {
+	return ck.id
+}
+
 // If retry=false, return NO_RESPONSE on failure
 func (ck *MasterClerk) Ping(retry bool) Err {
 	// id should be at least 1 if registration was successful

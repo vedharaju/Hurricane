@@ -67,21 +67,21 @@ func (m *Master) eventLoop() {
 			atomic.AddInt64(&m.numQueuedEvents, -1)
 			switch e.Type {
 			case NEW_BATCH:
-				m.execNewBatch(e.Id)
+				m.execNewBatch(e.Id, e.Data)
 			case LAUNCH_TASK:
-				m.execLaunchTask(e.Id)
+				m.execLaunchTask(e.Id, e.Data)
 			case TASK_SUCCESS:
-				m.execTaskSuccess(e.Id)
+				m.execTaskSuccess(e.Id, e.Data)
 			case TASK_FAILURE:
-				m.execTaskFailure(e.Id)
+				m.execTaskFailure(e.Id, e.Data)
 			case LAUNCH_JOB:
-				m.execLaunchJob(e.Id)
+				m.execLaunchJob(e.Id, e.Data)
 			case COPY_SUCCESS:
-				m.execCopySuccess(e.Id)
+				m.execCopySuccess(e.Id, e.Data)
 			case COPY_FAILURE:
-				m.execCopyFailure(e.Id)
+				m.execCopyFailure(e.Id, e.Data)
 			case LAUNCH_COPY:
-				m.execLaunchCopy(e.Id)
+				m.execLaunchCopy(e.Id, e.Data)
 			}
 			diff := time.Now().Sub(start)
 			fmt.Println("duration", diff)
@@ -113,13 +113,23 @@ func (m *Master) increaseMinWorkersTo(num int64) {
 	}
 }
 
+func (m *Master) HandleFailureData(data *FailureData) {
+	fmt.Println("HANDLING FAILURE", data)
+	tx := m.hd.Begin()
+	worker := GetWorker(tx, data.WorkerId)
+	worker.Status = WORKER_DEAD
+	saveOrPanic(tx, worker)
+	m.getNumAliveWorkers(tx)
+	commitOrPanic(tx)
+}
+
 // Add an event to the event queue
 func (m *Master) queueEvent(e Event) {
 	atomic.AddInt64(&m.numQueuedEvents, 1)
 	m.events <- e
 }
 
-func (m *Master) execCopySuccess(segmentCopyId int64) {
+func (m *Master) execCopySuccess(segmentCopyId int64, data interface{}) {
 	fmt.Println("copySuccess", segmentCopyId)
 
 	tx := m.hd.Begin()
@@ -153,11 +163,9 @@ func (m *Master) execCopySuccess(segmentCopyId int64) {
 	commitOrPanic(tx)
 }
 
-func (m *Master) execCopyFailure(segmentCopyId int64) {
+func (m *Master) execCopyFailure(segmentCopyId int64, data interface{}) {
 	fmt.Println("copyFailure", segmentCopyId)
-	// TODO: do something more sophisticated on failure to allow
-	// for recovery after worker failure (for example, if the task failed
-	// because of missing input segments)
+	m.HandleFailureData(data.(*FailureData))
 	e := Event{
 		Type: LAUNCH_COPY,
 		Id:   int64(segmentCopyId),
@@ -165,7 +173,7 @@ func (m *Master) execCopyFailure(segmentCopyId int64) {
 	m.queueEvent(e)
 }
 
-func (m *Master) execLaunchCopy(segmentCopyId int64) {
+func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 	fmt.Println("launchCopy", segmentCopyId)
 
 	tx := m.hd.Begin()
@@ -195,76 +203,95 @@ func (m *Master) execLaunchCopy(segmentCopyId int64) {
 				workerIds[int64(worker.Id)] = worker
 			}
 			sourceWorker := workerIds[segment.WorkerId]
-			delete(workerIds, segment.WorkerId)
-			for _, c := range otherCopies {
-				if c.Id != cp.Id {
-					delete(workerIds, c.WorkerId)
+			// sourceWorker might be nil if it has already died. In this case,
+			// abort this event and reschedule the RDD
+			if sourceWorker == nil {
+				e := Event{
+					Type: LAUNCH_JOB,
+					Id:   int64(rdd.Id),
 				}
-			}
-			workerList := make([]*Worker, 0, len(workerIds))
-			for _, w := range workerIds {
-				workerList = append(workerList, w)
-			}
-			worker := workerList[rand.Int()%len(workerList)]
-			cp.WorkerId = int64(worker.Id)
-			cp.Status = SEGMENT_COPY_PENDING
-			saveOrPanic(tx, cp)
-			// launch the rpc in the background
-			c := client.MakeWorkerClerk(worker.Url)
-			args := &client.CopySegmentArgs{
-				SegmentId: int64(segment.Id),
-				WorkerUrl: sourceWorker.Url,
-				WorkerId:  int64(sourceWorker.Id),
-			}
-			go func() {
-				reply := c.CopySegment(args, 3)
-				if reply != nil {
-					if reply.Err == client.OK {
-						// task success
+				m.queueEvent(e)
+			} else {
+				delete(workerIds, segment.WorkerId)
+				for _, c := range otherCopies {
+					if c.Id != cp.Id {
+						delete(workerIds, c.WorkerId)
+					}
+				}
+				workerList := make([]*Worker, 0, len(workerIds))
+				for _, w := range workerIds {
+					workerList = append(workerList, w)
+				}
+				worker := workerList[rand.Int()%len(workerList)]
+				cp.WorkerId = int64(worker.Id)
+				cp.Status = SEGMENT_COPY_PENDING
+				saveOrPanic(tx, cp)
+				// launch the rpc in the background
+				c := client.MakeWorkerClerk(worker.Url)
+				args := &client.CopySegmentArgs{
+					SegmentId: int64(segment.Id),
+					WorkerUrl: sourceWorker.Url,
+					WorkerId:  int64(sourceWorker.Id),
+				}
+				go func() {
+					reply := c.CopySegment(args, 3)
+					if reply != nil {
+						if reply.Err == client.OK {
+							// task success
+							e := Event{
+								Type: COPY_SUCCESS,
+								Id:   segmentCopyId,
+							}
+							m.queueEvent(e)
+						} else {
+							if reply.Err == client.DEAD_SEGMENT {
+								fmt.Println(client.DEAD_SEGMENT)
+								// task failed due to dead segment host
+								e := Event{
+									Type: COPY_FAILURE,
+									Id:   segmentCopyId,
+									Data: &FailureData{
+										Type:     FAILURE_DEAD_SEGMENT,
+										WorkerId: reply.WorkerId,
+									},
+								}
+								m.queueEvent(e)
+							} else {
+								fmt.Println(client.SEGMENT_NOT_FOUND)
+								// task failed due to a segment host that forgot an RDD
+								e := Event{
+									Type: COPY_FAILURE,
+									Id:   segmentCopyId,
+									Data: &FailureData{
+										Type:     FAILURE_MISSING_SEGMENT,
+										WorkerId: reply.WorkerId,
+									},
+								}
+								m.queueEvent(e)
+							}
+						}
+					} else {
+						fmt.Println("DEAD_WORKER")
+						// Conclude that the worker is dead
 						e := Event{
-							Type: COPY_SUCCESS,
+							Type: COPY_FAILURE,
 							Id:   segmentCopyId,
+							Data: &FailureData{
+								Type:     FAILURE_DEAD_WORKER,
+								WorkerId: int64(sourceWorker.Id),
+							},
 						}
 						m.queueEvent(e)
-					} else {
-						if reply.Err == client.DEAD_SEGMENT {
-							fmt.Println(client.DEAD_SEGMENT)
-							// task failed due to dead segment host
-							e := Event{
-								Type: COPY_FAILURE,
-								Id:   segmentCopyId,
-							}
-							m.queueEvent(e)
-							panic("this failure case hasn't been implemented yet")
-						} else {
-							fmt.Println(client.SEGMENT_NOT_FOUND)
-							// task failed due to a segment host that forgot an RDD
-							e := Event{
-								Type: COPY_FAILURE,
-								Id:   segmentCopyId,
-							}
-							m.queueEvent(e)
-							panic("this failure case hasn't been implemented yet")
-						}
 					}
-				} else {
-					fmt.Println("DEAD_WORKER")
-					m.markDeadWorker(worker)
-					// Conclude that the worker is dead
-					e := Event{
-						Type: COPY_FAILURE,
-						Id:   segmentCopyId,
-					}
-					m.queueEvent(e)
-				}
-			}()
+				}()
+			}
 		}
 	}
 
 	commitOrPanic(tx)
 }
 
-func (m *Master) execNewBatch(workflowId int64) {
+func (m *Master) execNewBatch(workflowId int64, data interface{}) {
 	fmt.Println("execNewBatch", workflowId)
 	tx := m.hd.Begin()
 
@@ -330,7 +357,7 @@ func preprocessMasterCommand(cmd string, batch *WorkflowBatch, segment *Segment,
 	return cmd
 }
 
-func (m *Master) execLaunchTask(segmentId int64) {
+func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 	fmt.Println("execLaunchTask", segmentId)
 	tx := m.hd.Begin()
 
@@ -407,27 +434,36 @@ func (m *Master) execLaunchTask(segmentId int64) {
 								e := Event{
 									Type: TASK_FAILURE,
 									Id:   segmentId,
+									Data: &FailureData{
+										Type:     FAILURE_DEAD_SEGMENT,
+										WorkerId: reply.WorkerId,
+									},
 								}
 								m.queueEvent(e)
-								panic("this failure case hasn't been implemented yet")
 							} else {
 								fmt.Println(client.SEGMENT_NOT_FOUND)
 								// task failed due to a segment host that forgot an RDD
 								e := Event{
 									Type: TASK_FAILURE,
 									Id:   segmentId,
+									Data: &FailureData{
+										Type:     FAILURE_MISSING_SEGMENT,
+										WorkerId: reply.WorkerId,
+									},
 								}
 								m.queueEvent(e)
-								panic("this failure case hasn't been implemented yet")
 							}
 						}
 					} else {
 						fmt.Println("DEAD_WORKER")
-						m.markDeadWorker(worker)
 						// Conclude that the worker is dead
 						e := Event{
 							Type: TASK_FAILURE,
 							Id:   segmentId,
+							Data: &FailureData{
+								Type:     FAILURE_DEAD_WORKER,
+								WorkerId: int64(worker.Id),
+							},
 						}
 						m.queueEvent(e)
 					}
@@ -446,16 +482,7 @@ func (m *Master) execLaunchTask(segmentId int64) {
 	}
 }
 
-func (m *Master) markDeadWorker(worker *Worker) {
-	// TODO: do something intelligent here
-	worker.Status = WORKER_DEAD
-	tx := m.hd.Begin()
-	saveOrPanic(tx, worker)
-	commitOrPanic(tx)
-	m.getNumAliveWorkers()
-}
-
-func (m *Master) execTaskSuccess(segmentId int64) {
+func (m *Master) execTaskSuccess(segmentId int64, data interface{}) {
 	fmt.Println("execTaskSuccess", segmentId)
 	tx := m.hd.Begin()
 
@@ -505,11 +532,9 @@ func (m *Master) tryLaunchingDependentJobs(tx *hood.Hood, rdd *Rdd, pj *Protojob
 	}
 }
 
-func (m *Master) execTaskFailure(segmentId int64) {
+func (m *Master) execTaskFailure(segmentId int64, data interface{}) {
 	fmt.Println("execTaskFailure", segmentId)
-	// TODO: do something more sophisticated on failure to allow
-	// for recovery after worker failure (for example, if the task failed
-	// because of missing input segments)
+	m.HandleFailureData(data.(*FailureData))
 	e := Event{
 		Type: LAUNCH_TASK,
 		Id:   int64(segmentId),
@@ -517,7 +542,7 @@ func (m *Master) execTaskFailure(segmentId int64) {
 	m.queueEvent(e)
 }
 
-func (m *Master) execLaunchJob(rddId int64) {
+func (m *Master) execLaunchJob(rddId int64, data interface{}) {
 	fmt.Println("execLaunchJob", rddId)
 	tx := m.hd.Begin()
 
@@ -577,7 +602,9 @@ func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply
 	tx.Save(&newWorker)
 	commitOrPanic(tx)
 
-	m.getNumAliveWorkers()
+	tx = m.hd.Begin()
+	m.getNumAliveWorkers(tx)
+	commitOrPanic(tx)
 
 	reply.Err = client.OK
 	reply.Id = int64(newWorker.Id)
@@ -585,10 +612,8 @@ func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply
 	return nil
 }
 
-func (m *Master) getNumAliveWorkers() {
-	tx := m.hd.Begin()
+func (m *Master) getNumAliveWorkers(tx *hood.Hood) {
 	atomic.StoreInt64(&m.numAliveWorkers, int64(GetNumAliveWorkers(tx)))
-	commitOrPanic(tx)
 }
 
 //
@@ -662,7 +687,9 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 	master.l = l
 
 	// Recovery procedure
-	master.getNumAliveWorkers()
+	tx := master.hd.Begin()
+	master.getNumAliveWorkers(tx)
+	commitOrPanic(tx)
 	master.restartPendingRdds()
 
 	// start event loop
