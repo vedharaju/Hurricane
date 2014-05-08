@@ -226,7 +226,7 @@ func GetWorker(tx *hood.Hood, id int64) *Worker {
 	}
 
 	if len(results) == 0 {
-		panic("could not find worker with given id")
+		return nil
 	} else {
 		return &results[0]
 	}

@@ -206,5 +206,17 @@ func StartServer(hostname string, masterhost string) *Worker {
 		}
 	}()
 
+	go func() {
+		for {
+			// Continuously ping the master so that the master is notified
+			// when a network partition is resolved.
+			reply := worker.master.Ping(true)
+			if reply == client.RESET {
+				panic("ping rejected by master")
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
 	return worker
 }

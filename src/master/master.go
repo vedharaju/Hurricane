@@ -45,13 +45,15 @@ func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
 
 	tx := m.hd.Begin()
 	w := GetWorker(m.hd, args.Id)
-	if w.Status == WORKER_DEAD {
-		reply.Err = client.RESET
-	} else {
+	if w != nil {
 		reply.Err = client.OK
+		w.Status = WORKER_ALIVE
+		tx.Save(w)
+	} else {
+		// The worker was not found in our database, so tell it to reset
+		reply.Err = client.RESET
 	}
 	// Timestamp is automatically upated on save
-	tx.Save(w)
 	commitOrPanic(tx)
 
 	return nil
@@ -592,7 +594,6 @@ func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply
 	tx := m.hd.Begin()
 	existingWorkers := GetWorkersAtAddress(tx, args.Me)
 	for _, w := range existingWorkers {
-		// TODO: mark dead worker()
 		w.Status = WORKER_DEAD
 		tx.Save(w)
 	}
