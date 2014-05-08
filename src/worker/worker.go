@@ -14,7 +14,7 @@ type Worker struct {
 	master *client.MasterClerk
 
         batches map[int][]int64
-	segments map[int64]*Segment
+	segments *LRU 
 
         max_segments int
 }
@@ -33,7 +33,7 @@ func (w *Worker) kill() {
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 	fmt.Println("GET TUPLES RPC")
-	segment := w.segments[args.SegmentId]
+	segment := w.segments.Get(args.SegmentId)
 	if segment != nil {
 		reply.Tuples = segment.Partitions[args.PartitionIndex]
 		reply.Err = client.OK
@@ -45,7 +45,7 @@ func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 
 func (w *Worker) GetSegment(args *GetSegmentArgs, reply *GetSegmentReply) error {
 	fmt.Println("GET SEGMENT RPC")
-	segment := w.segments[args.SegmentId]
+	segment := w.segments.Get(args.SegmentId)
 	if segment != nil {
 		reply.Segment = segment
 		reply.Err = client.OK
@@ -58,13 +58,14 @@ func (w *Worker) GetSegment(args *GetSegmentArgs, reply *GetSegmentReply) error 
 func (w *Worker) LocalGetSegment(segmentId int64) *Segment {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.segments[segmentId]
+	return w.segments.Get(segmentId)
 }
 
 func (w *Worker) LocalPutSegment(segmentId int64, segment *Segment) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.segments[segmentId] = segment
+        segment.Id = segmentId
+	w.segments.Insert(segmentId, segment)
 }
 
 func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySegmentReply) error {
@@ -131,7 +132,7 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	return nil
 }
 
-func (w *Worker) DeleteBatches(args *client.DeleteArgs, reply *cient.DeleteReply) error {
+func (w *Worker) DeleteBatches(args *client.DeleteArgs, reply *client.DeleteReply) error {
     
   return nil
 }
@@ -145,8 +146,8 @@ func StartServer(hostname string, masterhost string) *Worker {
 	worker := new(Worker)
 	worker.master = client.MakeMasterClerk(hostname, masterhost)
         worker.batches = make(map[int][]int64)
-	worker.segments = make(map[int64]*Segment)
         worker.max_segments = 10
+	worker.segments = NewLRU(worker.max_segments)
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(worker)
