@@ -67,6 +67,8 @@ func (w *Worker) LocalPutSegment(segmentId int64, segment *Segment) {
 func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySegmentReply) error {
 	fmt.Println("copying segment", args)
 	if w.LocalGetSegment(args.SegmentId) != nil {
+		// this should never happen during normal operaiton (though it might
+		// happen during the master recovery procedure)
 		fmt.Println("already have segment, overwriting...")
 	}
 	fmt.Println("fetching segment", args.SegmentId)
@@ -93,23 +95,30 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 	var inputTuples []Tuple
 	fmt.Println("executing task", args)
 	for _, segment := range args.Segments {
-		fmt.Println("fetching tuples", segment)
-		clerk := MakeWorkerInternalClerk(segment.WorkerUrl)
-		args2 := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
-		reply2 := clerk.GetTuples(&args2, 3)
-		if reply2 != nil {
-			if reply2.Err == client.OK {
-				fmt.Println("fetched tuples", len(reply2.Tuples))
-				inputTuples = append(inputTuples, reply2.Tuples...)
+		localSegment := w.LocalGetSegment(segment.SegmentId)
+		// fetch the segment if it is not already stored locally
+		if localSegment == nil {
+			fmt.Println("fetching tuples", segment)
+			clerk := MakeWorkerInternalClerk(segment.WorkerUrl)
+			args2 := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
+			reply2 := clerk.GetTuples(&args2, 3)
+			if reply2 != nil {
+				if reply2.Err == client.OK {
+					fmt.Println("fetched tuples", len(reply2.Tuples))
+					inputTuples = append(inputTuples, reply2.Tuples...)
+				} else {
+					reply.Err = reply2.Err
+					fmt.Println(reply.Err)
+					return nil
+				}
 			} else {
-				reply.Err = reply2.Err
+				reply.Err = client.DEAD_SEGMENT
 				fmt.Println(reply.Err)
 				return nil
 			}
 		} else {
-			reply.Err = client.DEAD_SEGMENT
-			fmt.Println(reply.Err)
-			return nil
+			// use the locally stored copy
+			inputTuples = append(inputTuples, localSegment.Partitions[segment.PartitionIndex]...)
 		}
 	}
 
