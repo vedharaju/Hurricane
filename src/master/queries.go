@@ -453,6 +453,26 @@ func (rdd *Rdd) GetSourceRdds(tx *hood.Hood) []*Rdd {
 	return pointerResults
 }
 
+func GetPendingRdds(tx *hood.Hood) []*Rdd {
+	var results []Rdd
+	err := tx.FindSql(&results,
+		`select rdd.*
+    from rdd
+    where rdd.state = $1`, RDD_PENDING)
+	if err != nil {
+		panic(err)
+	}
+
+	// Should return pointers to the result objects so that
+	// they can be mutated
+	pointerResults := make([]*Rdd, len(results))
+	for i := range results {
+		pointerResults[i] = &results[i]
+	}
+
+	return pointerResults
+}
+
 func (rdd *Rdd) GetDestRdds(tx *hood.Hood) []*Rdd {
 	var results []Rdd
 	err := tx.FindSql(&results,

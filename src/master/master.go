@@ -628,6 +628,18 @@ func (m *Master) kill() {
 	m.l.Close()
 }
 
+func (m *Master) restartPendingRdds() {
+	tx := m.hd.Begin()
+	rdds := GetPendingRdds(tx)
+	for _, rdd := range rdds {
+		e := Event{
+			Type: LAUNCH_JOB,
+			Id:   int64(rdd.Id),
+		}
+		m.queueEvent(e)
+	}
+}
+
 func StartServer(hostname string, hd *hood.Hood) *Master {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
@@ -649,6 +661,10 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 		log.Fatal("listen error: ", e)
 	}
 	master.l = l
+
+	// Recovery procedure
+	master.getNumAliveWorkers()
+	master.restartPendingRdds()
 
 	// start event loop
 	go master.eventLoop()
