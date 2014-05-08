@@ -14,6 +14,7 @@ import "path"
 //import "fmt"
 
 type LRU struct {
+	exists   map[int64]bool
 	segments map[int64]*list.Element
 	lru      *list.List
 	capacity int
@@ -24,7 +25,7 @@ func NewLRU(capacity int, wid int64) *LRU {
 	if capacity < 1 {
 		panic("capacity < 1")
 	}
-	c := &LRU{segments: make(map[int64]*list.Element), lru: list.New(), capacity: capacity, filepath: "/src/segments/segment" + strconv.FormatInt(wid, 10) + "_"}
+	c := &LRU{exists: make(map[int64]bool), segments: make(map[int64]*list.Element), lru: list.New(), capacity: capacity, filepath: "/src/segments/segment" + strconv.FormatInt(wid, 10) + "_"}
 	return c
 }
 
@@ -43,6 +44,7 @@ func (c *LRU) evictAsNecessary() {
 func (c *LRU) Insert(key int64, segment *Segment) {
 	el := c.lru.PushFront(segment)
 	c.segments[key] = el
+	c.exists[key] = true
 	c.evictAsNecessary()
 }
 
@@ -61,6 +63,11 @@ func (c *LRU) Get(key int64) *Segment { //change to return *Segment
 }
 
 func (c *LRU) findSegmentFromFile(key int64) *Segment {
+	_, ok := c.exists[key]
+	if !ok {
+		return nil
+	}
+
 	gopath := os.Getenv("GOPATH")
 	segment_file := path.Join(gopath, c.filepath+strconv.FormatInt(key, 10))
 	file, err := os.Open(segment_file) // For read access.
