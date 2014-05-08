@@ -8,18 +8,23 @@ There is a single, unreplicated master node and several worker nodes. The master
 Getting started
 ---------------
 Precompile user defined functions
+
 `./build_udfs.sh`
 
 Initialize the database
+
 `go run init_database.go`
 
 Load the workflow
+
 `go run load_workflow.go src/demo/wordcount_go/wc_workflow`
 
 Start a master
+
 `go run start_master.go localhost:1234`
 
 Start a worker (additional workers if necessary)
+
 `go run start_worker.go localhost:1235 localhost:1234`
 
 
