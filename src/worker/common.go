@@ -11,6 +11,7 @@ import "os/exec"
 import "strings"
 import "client"
 import "path"
+import "fmt"
 
 type WorkerInternalClerk struct {
 	// (host:port) information
@@ -172,8 +173,9 @@ func preprocessCommand(command string) string {
 // done executing.
 func runUDF(command string, inputTuples ...[]Tuple) []Tuple {
 	// spawn the external process
-	splits := strings.Split(preprocessCommand(command), " ")
-	cmd := exec.Command(splits[0], splits[1:]...)
+	splits := strings.Split(command, " ")
+	fmt.Println(preprocessCommand(splits[0]));
+	cmd := exec.Command(preprocessCommand(splits[0]), splits[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Panic(err)
