@@ -102,11 +102,12 @@ func makeWorkflow(hd *hood.Hood) *master.Workflow {
 	return &workflow
 }
 
-func makeWorkflowEdge(hd *hood.Hood, src int64, dest int64, delay int) *master.WorkflowEdge {
+func makeWorkflowEdge(hd *hood.Hood, src int64, dest int64, delay int, index int) *master.WorkflowEdge {
 	edge := master.WorkflowEdge{
 		SourceJobId: src,
 		DestJobId:   dest,
 		Delay:       delay,
+		Index:			 index,
 	}
 	saveOrPanic(hd, &edge)
 	return &edge
@@ -176,7 +177,7 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 				}
 
 				from := r_comma.Split(strings.TrimSpace(split[0]), -1)
-				for _, fromJob := range from {
+				for index, fromJob := range from {
 					fromInfo := r_whitespace.Split(strings.TrimSpace(fromJob), 2)
 					fromId, ok := jobIds[strings.TrimSpace(fromInfo[0])]
 
@@ -187,7 +188,7 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 					}
 
 					if ok {
-						makeWorkflowEdge(hd, fromId, toId, int(fromDelay))
+						makeWorkflowEdge(hd, fromId, toId, int(fromDelay), index)
 					} else {
 						return nil, errors.New("jobs: Undefined job " + fromJob)
 					}
