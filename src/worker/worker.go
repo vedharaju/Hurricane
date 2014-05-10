@@ -113,7 +113,7 @@ func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySeg
 }
 
 func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error {
-	var inputTuples []Tuple
+	inputTuples := make(map[int][]Tuple)
 	fmt.Println("executing task", args)
 	for _, segment := range args.Segments {
 		localSegment := w.LocalGetSegment(segment.SegmentId)
@@ -126,7 +126,7 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 			if reply2 != nil {
 				if reply2.Err == client.OK {
 					fmt.Println("fetched tuples", len(reply2.Tuples))
-					inputTuples = append(inputTuples, reply2.Tuples...)
+					inputTuples[segment.Index] = append(inputTuples[segment.Index], reply2.Tuples...)
 				} else {
 					reply.Err = reply2.Err
 					reply.WorkerId = segment.WorkerId
@@ -141,7 +141,7 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 			}
 		} else {
 			// use the locally stored copy
-			inputTuples = append(inputTuples, localSegment.Partitions[segment.PartitionIndex]...)
+			inputTuples[segment.Index] = append(inputTuples[segment.Index], localSegment.Partitions[segment.PartitionIndex]...)
 		}
 	}
 

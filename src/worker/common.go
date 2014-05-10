@@ -171,10 +171,10 @@ func preprocessCommand(command string) string {
 // Execute a UDF command that accepts zero or more input lists of tuples, and
 // returns one output list of tuples. This function blocks until the UDF is
 // done executing.
-func runUDF(command string, inputTuples ...[]Tuple) []Tuple {
+func runUDF(command string, inputTuples map[int][]Tuple) []Tuple {
 	// spawn the external process
 	splits := strings.Split(command, " ")
-	fmt.Println(preprocessCommand(splits[0]));
+	fmt.Println(preprocessCommand(splits[0]))
 	cmd := exec.Command(preprocessCommand(splits[0]), splits[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
