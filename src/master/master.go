@@ -401,12 +401,14 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 			if len(missingRdds) != 0 {
 				// if any of the input rdds are incomplete, then re-execute them
 				for _, rdd := range missingRdds {
+					fmt.Println("missing rdd, reexecuting", rdd)
 					e := Event{
 						Type: LAUNCH_JOB,
 						Id:   int64(rdd.Id),
 					}
 					m.queueEvent(e)
 				}
+				commitOrPanic(tx)
 			} else {
 				// otherwise, launch the task
 				rdd := segment.GetRdd(tx)
@@ -548,6 +550,7 @@ func (m *Master) tryLaunchingDependentJobs(tx *hood.Hood, rdd *Rdd, pj *Protojob
 			}
 		}
 		if isComplete {
+			fmt.Println("launching next job", destRdd)
 			e := Event{
 				Type: LAUNCH_JOB,
 				Id:   int64(destRdd.Id),
@@ -602,13 +605,30 @@ func (m *Master) execLaunchJob(rddId int64, data interface{}) {
 		// If all the dependencies are met, then launch the next
 		// Rdd (dependencies are also checked for each individual task)
 		if readyToContinue {
-			segments, _ := rdd.CreateSegments(tx)
-			for _, segment := range segments {
-				e := Event{
-					Type: LAUNCH_TASK,
-					Id:   int64(segment.Id),
+			// check whether we already created segments for this rdd
+			segments := rdd.GetSegments(tx)
+			if len(segments) > 0 {
+				// if segments already present, just run the ones that are not complete
+				// (this is part of the recovery protocol)
+				for _, segment := range segments {
+					if segment.Status != SEGMENT_COMPLETE {
+						e := Event{
+							Type: LAUNCH_TASK,
+							Id:   int64(segment.Id),
+						}
+						m.queueEvent(e)
+					}
 				}
-				m.queueEvent(e)
+			} else {
+				// Otherwise, create the new segments and run them
+				segments, _ := rdd.CreateSegments(tx)
+				for _, segment := range segments {
+					e := Event{
+						Type: LAUNCH_TASK,
+						Id:   int64(segment.Id),
+					}
+					m.queueEvent(e)
+				}
 			}
 		}
 	}
