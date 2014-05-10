@@ -7,6 +7,7 @@ import "net/rpc"
 import "sync"
 import "sync/atomic"
 import "log"
+import "os"
 import "github.com/eaigner/hood"
 import "strings"
 import "client"
@@ -703,6 +704,15 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
+ 
+       gopath := os.Getenv("GOPATH")
+        if _, err := os.Stat(gopath + "/src/segments"); err != nil {
+          if os.IsNotExist(err) {
+            os.Mkdir(gopath + "/src/segments", 0777)
+          } else {
+            panic(err)
+          }
+        }
 
 	master := new(Master)
 

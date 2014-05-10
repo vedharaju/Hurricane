@@ -2,8 +2,17 @@ package worker
 
 import "testing"
 import "fmt"
+import "os"
 
 func TestLRU(t *testing.T) {
+        gopath := os.Getenv("GOPATH")
+        if _, err := os.Stat(gopath + "/src/segments"); err != nil {
+          if os.IsNotExist(err) {
+            os.Mkdir(gopath + "/src/segments", 0777)
+          } else {
+            panic(err)
+          }
+        }
 	tuple1 := Tuple{Slice: []string{"Vedha", "Vikas", "Jeffrey", "Zack"}}
 	tuple2 := Tuple{Slice: []string{"Vivek", "Anuhya", "Esha"}}
 	tuple3 := Tuple{Slice: []string{"Christina", "Keerti"}}
