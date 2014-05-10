@@ -107,7 +107,7 @@ func makeWorkflowEdge(hd *hood.Hood, src int64, dest int64, delay int, index int
 		SourceJobId: src,
 		DestJobId:   dest,
 		Delay:       delay,
-		Index:			 index,
+		Index:       index,
 	}
 	saveOrPanic(hd, &edge)
 	return &edge

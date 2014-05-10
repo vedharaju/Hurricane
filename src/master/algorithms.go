@@ -199,7 +199,12 @@ func (segment *Segment) CalculateInputSegments(hd *hood.Hood) ([]*client.Segment
 						}
 						output = append(output, input)
 					} else {
-						// else, mark this RDD as being incomplete
+						// else, mark this RDD and segment as being incomplete
+						sourceSegment.Status = SEGMENT_UNASSIGNED
+						saveOrPanic(hd, sourceSegment)
+						sourceRdd.State = RDD_PENDING
+						saveOrPanic(hd, sourceRdd)
+						missingRdds = append(missingRdds, sourceRdd)
 					}
 				}
 			}
