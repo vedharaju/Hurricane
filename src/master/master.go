@@ -659,6 +659,8 @@ func (m *Master) getNumAliveWorkers(tx *hood.Hood) {
 // Instead, crash gracefully.
 //
 func (m *Master) tick() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tx := m.hd.Begin()
 
 	// Don't launch new batches if the event queue is more than half full
