@@ -172,14 +172,14 @@ func StartServer(hostname string, masterhost string) *Worker {
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
 
-        gopath := os.Getenv("GOPATH")
-        if _, err := os.Stat(gopath + "/src/segments"); err != nil {
-          if os.IsNotExist(err) {
-            os.Mkdir(gopath + "/src/segments", 0777)
-          } else {
-            panic(err)
-          }
-        }
+	gopath := os.Getenv("GOPATH")
+	if _, err := os.Stat(gopath + "/src/segments"); err != nil {
+		if os.IsNotExist(err) {
+			os.Mkdir(gopath+"/src/segments", 0777)
+		} else {
+			panic(err)
+		}
+	}
 
 	fmt.Println("Starting worker")
 	worker := new(Worker)

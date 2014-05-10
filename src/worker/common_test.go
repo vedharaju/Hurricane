@@ -123,10 +123,10 @@ func TestSimpleUdf(t *testing.T) {
 	t2.Slice[0] = "Tuple2"
 	in1 := []Tuple{t1}
 	in2 := []Tuple{t2}
-        input := map[int][]Tuple{
-                    1  : in1,
-                    2  : in2,
-        }
+	input := map[int][]Tuple{
+		1: in1,
+		2: in2,
+	}
 	output := runUDF("tee", input)
 
 	expected := []Tuple{t1, t2}

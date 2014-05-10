@@ -370,9 +370,9 @@ func parseIndex(s string) []int {
 }
 
 func preprocessMasterCommand(cmd string, batch *WorkflowBatch, segment *Segment, workflow *Workflow) string {
-	cmd = strings.Replace(cmd, "\\I", string(segment.Index), -1)
-	cmd = strings.Replace(cmd, "\\S", string(batch.StartTime), -1)
-	cmd = strings.Replace(cmd, "\\D", string(workflow.Duration), -1)
+	cmd = strings.Replace(cmd, "\\I", strconv.Itoa(segment.Index), -1)
+	cmd = strings.Replace(cmd, "\\S", strconv.FormatInt(batch.StartTime, 10), -1)
+	cmd = strings.Replace(cmd, "\\D", strconv.FormatInt(workflow.Duration, 10), -1)
 	return cmd
 }
 
@@ -724,15 +724,15 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
- 
-       gopath := os.Getenv("GOPATH")
-        if _, err := os.Stat(gopath + "/src/segments"); err != nil {
-          if os.IsNotExist(err) {
-            os.Mkdir(gopath + "/src/segments", 0777)
-          } else {
-            panic(err)
-          }
-        }
+
+	gopath := os.Getenv("GOPATH")
+	if _, err := os.Stat(gopath + "/src/segments"); err != nil {
+		if os.IsNotExist(err) {
+			os.Mkdir(gopath+"/src/segments", 0777)
+		} else {
+			panic(err)
+		}
+	}
 
 	master := new(Master)
 
