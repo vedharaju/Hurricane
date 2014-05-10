@@ -8,9 +8,9 @@ import "time"
 
 func main() {
 
-  file, err := os.Open("intermed" + time.Now().String())
+  file, err := os.Open("input-combine-" + time.Now().String())
   if err != nil {
-    file, err = os.Create("intermed" + time.Now().String())
+    file, err = os.Create("input-combine-" + time.Now().String())
     if err != nil {
       panic(err)
     }
@@ -25,7 +25,6 @@ func main() {
 
   worker.ReadTupleStream(os.Stdin, func(tuple worker.Tuple, index int) {
     file.Write([]byte(tuple.SerializeTuple(index)))
-    file.Write([]byte(tuple.Slice[0] + ", " + tuple.Slice[1] + "\n"))
 
     switch(index) {
       case 1:
@@ -69,8 +68,20 @@ func main() {
 //    }
   //}
 
+  file1, err := os.Open("prod-combine-" + time.Now().String())
+  if err != nil {
+    file1, err = os.Create("prod-combine-" + time.Now().String())
+    if err != nil {
+      panic(err)
+    }
+  }
+  defer file1.Close()
+
+
   for word, count := range counts {
     outTuple := worker.Tuple{[]string{word, strconv.Itoa(count)}}
+    file1.Write([]byte(outTuple.SerializeTuple(2)))
+
     stdout.Write(outTuple.SerializeTuple(2))
     stdout.Write([]byte{'\n'})
   }
