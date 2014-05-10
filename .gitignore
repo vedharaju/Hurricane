@@ -5,3 +5,4 @@ pkg/
 tags
 *.udf
 src/demo/error_count/log.txt
+.DS_Store
