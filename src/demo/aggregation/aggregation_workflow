@@ -8,5 +8,5 @@ C: @/src/demo/aggregation/output.udf ;; r=true & p=(0) & w=1 & b=1
 
 WORKFLOW
 
-A,B 1 -> B
+A,A 3,B 1 -> B
 B -> C
