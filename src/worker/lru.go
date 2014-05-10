@@ -8,7 +8,6 @@ import "encoding/gob"
 
 //import "io/ioutil"
 import "os"
-import "log"
 import "path"
 
 //import "fmt"
@@ -36,8 +35,8 @@ func (c *LRU) Length() int {
 func (c *LRU) evictAsNecessary() {
 	for c.Length() > c.capacity {
 		segment := c.lru.Remove(c.lru.Back()).(*Segment)
-		delete(c.segments, segment.Id) //delete this segment from the map
 		c.moveToDisk(segment)
+		delete(c.segments, segment.Id) //delete this segment from the map
 	}
 }
 
@@ -55,9 +54,8 @@ func (c *LRU) Get(key int64) *Segment { //change to return *Segment
 		return s.Value.(*Segment)
 	} else if c.exists[key] {
 		segment := c.findSegmentFromFile(key)
-
-		c.removeFile(key)
 		c.Insert(key, segment)
+		c.removeFile(key)
 		return segment
 	} else {
 		return nil
@@ -70,7 +68,7 @@ func (c *LRU) findSegmentFromFile(key int64) *Segment {
 	file, err := os.Open(segment_file) // For read access.
 	defer file.Close()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	var decodedSegment *Segment
