@@ -2,7 +2,7 @@ package main
 
 import "master"
 import "workflow"
-import "fmt"
+import "client"
 
 func main() {
 	hd := master.GetDbConnection()
@@ -10,9 +10,9 @@ func main() {
 	workflows := master.GetWorkflows(hd)
 
 	for _, w := range workflows {
-		fmt.Println("--------------------------Begin--------------------------")
-		fmt.Println("Workflow ID:", w.Id)
-		fmt.Println(workflow.WorkflowToString(hd, w))
-		fmt.Println("---------------------------End---------------------------")
+		client.Debug("--------------------------Begin--------------------------")
+		client.Debug("Workflow ID:", w.Id)
+		client.Debug(workflow.WorkflowToString(hd, w))
+		client.Debug("---------------------------End---------------------------")
 	}
 }

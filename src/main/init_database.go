@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"client"
 	"master"
 )
 
@@ -16,5 +16,5 @@ func main() {
 	hd := master.GetDbConnection()
 	master.ResetDb(hd)
 	master.CreateTables(hd)
-	fmt.Println("Success")
+	client.Debug("Success")
 }

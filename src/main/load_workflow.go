@@ -2,11 +2,11 @@ package main
 
 import "master"
 import "workflow"
-import "fmt"
+import "client"
 import "os"
 
 func printUsage() {
-	fmt.Println("Usage\n  go run load_workflow.go filename\n")
+	client.Debug("Usage\n  go run load_workflow.go filename\n")
 }
 
 func main() {
@@ -27,9 +27,9 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("Loaded workflow")
-	fmt.Println("--------------------------Begin--------------------------")
-	fmt.Println("Workflow ID:", w.Id)
-	fmt.Println(workflow.WorkflowToString(hd, w))
-	fmt.Println("---------------------------End---------------------------")
+	client.Debug("Loaded workflow")
+	client.Debug("--------------------------Begin--------------------------")
+	client.Debug("Workflow ID:", w.Id)
+	client.Debug(workflow.WorkflowToString(hd, w))
+	client.Debug("---------------------------End---------------------------")
 }

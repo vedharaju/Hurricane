@@ -1,6 +1,6 @@
 package master
 
-import "fmt"
+import "client"
 import "time"
 import "net"
 import "net/rpc"
@@ -10,9 +10,9 @@ import "log"
 import "os"
 import "github.com/eaigner/hood"
 import "strings"
-import "client"
 import "strconv"
 import "math/rand"
+import "fmt"
 
 const MAX_EVENTS = 10000
 
@@ -42,7 +42,7 @@ func commitOrPanic(tx *hood.Hood) {
 // server Ping RPC handler.
 //
 func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
-	fmt.Println("Pinging", args.Id)
+	client.Debug("Pinging", args.Id)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -65,7 +65,12 @@ func (m *Master) Ping(args *client.PingArgs, reply *client.PingReply) error {
 
 func (m *Master) eventLoop() {
 	to := 1
+	iteration := 0
 	for {
+		if iteration%10 == 0 {
+			fmt.Println("on iteration", iteration)
+		}
+		iteration += 1
 		if atomic.LoadInt64(&m.numAliveWorkers) >= atomic.LoadInt64(&m.minWorkers) {
 			start := time.Now()
 			to = 1
@@ -90,9 +95,9 @@ func (m *Master) eventLoop() {
 				m.execLaunchCopy(e.Id, e.Data)
 			}
 			diff := time.Now().Sub(start)
-			fmt.Println("duration", diff)
+			client.Debug("duration", diff)
 		} else {
-			fmt.Println("sleeping", to)
+			client.Debug("sleeping", to)
 			time.Sleep(time.Duration(to) * time.Millisecond)
 			if to < 1000 {
 				to *= 2
@@ -120,7 +125,7 @@ func (m *Master) increaseMinWorkersTo(num int64) {
 }
 
 func (m *Master) HandleFailureData(data *FailureData) {
-	fmt.Println("HANDLING FAILURE", data)
+	client.Debug("HANDLING FAILURE", data)
 	tx := m.hd.Begin()
 	worker := GetWorker(tx, data.WorkerId)
 	worker.Status = WORKER_DEAD
@@ -136,7 +141,7 @@ func (m *Master) queueEvent(e Event) {
 }
 
 func (m *Master) execCopySuccess(segmentCopyId int64, data interface{}) {
-	fmt.Println("copySuccess", segmentCopyId)
+	client.Debug("copySuccess", segmentCopyId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -173,7 +178,7 @@ func (m *Master) execCopySuccess(segmentCopyId int64, data interface{}) {
 }
 
 func (m *Master) execCopyFailure(segmentCopyId int64, data interface{}) {
-	fmt.Println("copyFailure", segmentCopyId)
+	client.Debug("copyFailure", segmentCopyId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -187,7 +192,7 @@ func (m *Master) execCopyFailure(segmentCopyId int64, data interface{}) {
 }
 
 func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
-	fmt.Println("launchCopy", segmentCopyId)
+	client.Debug("launchCopy", segmentCopyId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -204,7 +209,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 		if len(workers) < pj.Copies+1 {
 			// Stop the event loop until enough workers join the system
 			// to meet the required replication level
-			fmt.Println("not enough workers, need at least", pj.Copies+1)
+			client.Debug("not enough workers, need at least", pj.Copies+1)
 			m.increaseMinWorkersTo(int64(pj.Copies + 1))
 			e := Event{
 				Type: LAUNCH_COPY,
@@ -261,7 +266,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 							m.queueEvent(e)
 						} else {
 							if reply.Err == client.DEAD_SEGMENT {
-								fmt.Println(client.DEAD_SEGMENT)
+								client.Debug(client.DEAD_SEGMENT)
 								// task failed due to dead segment host
 								e := Event{
 									Type: COPY_FAILURE,
@@ -273,7 +278,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 								}
 								m.queueEvent(e)
 							} else {
-								fmt.Println(client.SEGMENT_NOT_FOUND)
+								client.Debug(client.SEGMENT_NOT_FOUND)
 								// task failed due to a segment host that forgot an RDD
 								e := Event{
 									Type: COPY_FAILURE,
@@ -287,7 +292,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 							}
 						}
 					} else {
-						fmt.Println("DEAD_WORKER")
+						client.Debug("DEAD_WORKER")
 						// Conclude that the worker is dead
 						e := Event{
 							Type: COPY_FAILURE,
@@ -308,7 +313,7 @@ func (m *Master) execLaunchCopy(segmentCopyId int64, data interface{}) {
 }
 
 func (m *Master) execNewBatch(workflowId int64, data interface{}) {
-	fmt.Println("execNewBatch", workflowId)
+	client.Debug("execNewBatch", workflowId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -323,7 +328,7 @@ func (m *Master) execNewBatch(workflowId int64, data interface{}) {
 	var batch *WorkflowBatch
 	if lastBatch == nil {
 		// if no last batch, then create the first batch right now - duration - time_eror
-		fmt.Println("No last batch")
+		client.Debug("No last batch")
 		batch = workflow.MakeBatch(tx, now-workflow.Duration-TIME_ERROR)
 	} else {
 		// TODO: figure out what exactly to do if there are multiple
@@ -332,9 +337,9 @@ func (m *Master) execNewBatch(workflowId int64, data interface{}) {
 
 		// for now, only launch a new batch if the proper time has arrived
 		// (eg. the end time of the new batch has definitely passed)
-		fmt.Println(now, lastBatch.StartTime)
+		client.Debug(now, lastBatch.StartTime)
 		if now > lastBatch.StartTime+2*workflow.Duration+TIME_ERROR {
-			fmt.Println("add new batch", workflow.Duration)
+			client.Debug("add new batch", workflow.Duration)
 			batch = workflow.MakeBatch(tx, lastBatch.StartTime+workflow.Duration)
 		}
 	}
@@ -377,7 +382,7 @@ func preprocessMasterCommand(cmd string, batch *WorkflowBatch, segment *Segment,
 }
 
 func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
-	fmt.Println("execLaunchTask", segmentId)
+	client.Debug("execLaunchTask", segmentId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -401,7 +406,7 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 			if len(missingRdds) != 0 {
 				// if any of the input rdds are incomplete, then re-execute them
 				for _, rdd := range missingRdds {
-					fmt.Println("missing rdd, reexecuting", rdd)
+					client.Debug("missing rdd, reexecuting", rdd)
 					e := Event{
 						Type: LAUNCH_JOB,
 						Id:   int64(rdd.Id),
@@ -453,7 +458,7 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 							}
 						} else {
 							if reply.Err == client.DEAD_SEGMENT {
-								fmt.Println(client.DEAD_SEGMENT)
+								client.Debug(client.DEAD_SEGMENT)
 								// task failed due to dead segment host
 								e := Event{
 									Type: TASK_FAILURE,
@@ -465,7 +470,7 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 								}
 								m.queueEvent(e)
 							} else {
-								fmt.Println(client.SEGMENT_NOT_FOUND)
+								client.Debug(client.SEGMENT_NOT_FOUND)
 								// task failed due to a segment host that forgot an RDD
 								e := Event{
 									Type: TASK_FAILURE,
@@ -479,7 +484,7 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 							}
 						}
 					} else {
-						fmt.Println("DEAD_WORKER")
+						client.Debug("DEAD_WORKER")
 						// Conclude that the worker is dead
 						e := Event{
 							Type: TASK_FAILURE,
@@ -495,7 +500,7 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 			}
 		} else {
 			// if no workers are available, just re-queue the task
-			fmt.Println("no workers available")
+			client.Debug("no workers available")
 			e := Event{
 				Type: LAUNCH_TASK,
 				Id:   segmentId,
@@ -507,7 +512,7 @@ func (m *Master) execLaunchTask(segmentId int64, data interface{}) {
 }
 
 func (m *Master) execTaskSuccess(segmentId int64, data interface{}) {
-	fmt.Println("execTaskSuccess", segmentId)
+	client.Debug("execTaskSuccess", segmentId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -523,7 +528,7 @@ func (m *Master) execTaskSuccess(segmentId int64, data interface{}) {
 	numComplete := rdd.GetNumSegmentsComplete(tx, segment)
 
 	if numComplete == pj.NumSegments {
-		fmt.Println("Job complete", rdd.Id)
+		client.Debug("Job complete", rdd.Id)
 		rdd.State = RDD_COMPLETE
 		saveOrPanic(tx, rdd)
 		m.tryLaunchingDependentJobs(tx, rdd, pj)
@@ -550,7 +555,7 @@ func (m *Master) tryLaunchingDependentJobs(tx *hood.Hood, rdd *Rdd, pj *Protojob
 			}
 		}
 		if isComplete {
-			fmt.Println("launching next job", destRdd)
+			client.Debug("launching next job", destRdd)
 			e := Event{
 				Type: LAUNCH_JOB,
 				Id:   int64(destRdd.Id),
@@ -561,7 +566,7 @@ func (m *Master) tryLaunchingDependentJobs(tx *hood.Hood, rdd *Rdd, pj *Protojob
 }
 
 func (m *Master) execTaskFailure(segmentId int64, data interface{}) {
-	fmt.Println("execTaskFailure", segmentId)
+	client.Debug("execTaskFailure", segmentId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -575,7 +580,7 @@ func (m *Master) execTaskFailure(segmentId int64, data interface{}) {
 }
 
 func (m *Master) execLaunchJob(rddId int64, data interface{}) {
-	fmt.Println("execLaunchJob", rddId)
+	client.Debug("execLaunchJob", rddId)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -639,7 +644,7 @@ func (m *Master) execLaunchJob(rddId int64, data interface{}) {
 // server Register RPC handler.
 //
 func (m *Master) Register(args *client.RegisterArgs, reply *client.RegisterReply) error {
-	fmt.Println("Registering", args)
+	client.Debug("Registering", args)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -696,7 +701,7 @@ func (m *Master) tick() {
 			m.queueEvent(e)
 		}
 	} else {
-		fmt.Println("EVENT QUEUE IS ALMOST FULL!! SOMETHING IS WRONG!!")
+		client.Debug("EVENT QUEUE IS ALMOST FULL!! SOMETHING IS WRONG!!")
 	}
 
 	commitOrPanic(tx)
@@ -765,7 +770,6 @@ func StartServer(hostname string, hd *hood.Hood) *Master {
 			if conn, err := master.l.Accept(); err == nil {
 				go rpcs.ServeConn(conn)
 			} else {
-				fmt.Printf("Master() accept: %v\n", err.Error())
 				master.kill()
 			}
 		}

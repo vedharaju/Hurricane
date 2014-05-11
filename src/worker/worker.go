@@ -1,14 +1,14 @@
 package worker
 
-import "fmt"
+import "client"
 import "net"
 import "net/rpc"
 import "sync"
 import "os"
 import "log"
 import "strings"
-import "client"
 import "time"
+import "fmt"
 
 type Worker struct {
 	mu     sync.Mutex
@@ -34,7 +34,7 @@ func (w *Worker) kill() {
 }
 
 func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
-	fmt.Println("GET TUPLES RPC")
+	client.Debug("GET TUPLES RPC")
 	if args.WorkerId != w.master.GetId() {
 		segment := w.LocalGetSegment(args.SegmentId)
 		if segment != nil {
@@ -52,7 +52,7 @@ func (w *Worker) GetTuples(args *GetTuplesArgs, reply *GetTuplesReply) error {
 }
 
 func (w *Worker) GetSegment(args *GetSegmentArgs, reply *GetSegmentReply) error {
-	fmt.Println("GET SEGMENT RPC")
+	client.Debug("GET SEGMENT RPC")
 	if args.WorkerId != w.master.GetId() {
 		segment := w.LocalGetSegment(args.SegmentId)
 		if segment != nil {
@@ -83,31 +83,31 @@ func (w *Worker) LocalPutSegment(segmentId int64, segment *Segment) {
 }
 
 func (w *Worker) CopySegment(args *client.CopySegmentArgs, reply *client.CopySegmentReply) error {
-	fmt.Println("copying segment", args)
+	client.Debug("copying segment", args)
 	if w.LocalGetSegment(args.SegmentId) != nil {
 		// this should never happen during normal operaiton (though it might
 		// happen during the master recovery procedure)
-		fmt.Println("already have segment, overwriting...")
+		client.Debug("already have segment, overwriting...")
 	}
-	fmt.Println("fetching segment", args.SegmentId)
+	client.Debug("fetching segment", args.SegmentId)
 	clerk := MakeWorkerInternalClerk(args.WorkerUrl)
 	args2 := GetSegmentArgs{SegmentId: args.SegmentId}
 	reply2 := clerk.GetSegment(&args2, 3)
 	if reply2 != nil {
 		if reply2.Err == client.OK {
-			fmt.Println("fetched segment", args.SegmentId)
+			client.Debug("fetched segment", args.SegmentId)
 			w.LocalPutSegment(args.SegmentId, reply2.Segment)
 			reply.Err = client.OK
 		} else {
 			reply.Err = reply2.Err
 			reply.WorkerId = args.WorkerId
-			fmt.Println(reply.Err)
+			client.Debug(reply.Err)
 			return nil
 		}
 	} else {
 		reply.Err = client.DEAD_SEGMENT
 		reply.WorkerId = args.WorkerId
-		fmt.Println(reply.Err)
+		client.Debug(reply.Err)
 		return nil
 	}
 	return nil
@@ -120,24 +120,24 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 		localSegment := w.LocalGetSegment(segment.SegmentId)
 		// fetch the segment if it is not already stored locally
 		if localSegment == nil {
-			fmt.Println("fetching tuples", segment)
+			client.Debug("fetching tuples", segment)
 			clerk := MakeWorkerInternalClerk(segment.WorkerUrl)
 			args2 := GetTuplesArgs{SegmentId: segment.SegmentId, PartitionIndex: segment.PartitionIndex}
 			reply2 := clerk.GetTuples(&args2, 3)
 			if reply2 != nil {
 				if reply2.Err == client.OK {
-					fmt.Println("fetched tuples", len(reply2.Tuples))
+					client.Debug("fetched tuples", len(reply2.Tuples))
 					inputTuples[segment.Index] = append(inputTuples[segment.Index], reply2.Tuples...)
 				} else {
 					reply.Err = reply2.Err
 					reply.WorkerId = segment.WorkerId
-					fmt.Println(reply.Err)
+					client.Debug(reply.Err)
 					return nil
 				}
 			} else {
 				reply.Err = client.DEAD_SEGMENT
 				reply.WorkerId = segment.WorkerId
-				fmt.Println(reply.Err)
+				client.Debug(reply.Err)
 				return nil
 			}
 		} else {
@@ -146,18 +146,18 @@ func (w *Worker) ExecTask(args *client.ExecArgs, reply *client.ExecReply) error 
 		}
 	}
 
-	fmt.Println("running udf")
+	client.Debug("running udf")
 	start := time.Now()
 	outputTuples := runUDF(args.Command, inputTuples)
 	end := time.Now()
-	fmt.Println("duration:", end.Sub(start))
-	fmt.Println("got output tuples", len(outputTuples))
+	client.Debug("duration:", end.Sub(start))
+	client.Debug("got output tuples", len(outputTuples))
 
-	fmt.Println("writing segment")
+	client.Debug("writing segment")
 	segment := MakeSegment(outputTuples, args.Indices, args.Parts)
 	w.LocalPutSegment(args.OutputSegmentId, segment)
 
-	fmt.Println("success")
+	client.Debug("success")
 	reply.Err = client.OK
 	return nil
 }
@@ -181,7 +181,7 @@ func StartServer(hostname string, masterhost string) *Worker {
 		}
 	}
 
-	fmt.Println("Starting worker")
+	client.Debug("Starting worker")
 	worker := new(Worker)
 	worker.master = client.MakeMasterClerk(hostname, masterhost)
 	worker.batches = make(map[int][]int64)
@@ -199,9 +199,9 @@ func StartServer(hostname string, masterhost string) *Worker {
 	worker.l = l
 
 	// Register the worker to master
-	fmt.Println("Registering worker")
+	client.Debug("Registering worker")
 	worker.master.Register(true)
-	fmt.Println("Registered worker")
+	client.Debug("Registered worker")
 
 	worker.segments = NewLRU(worker.max_segments, worker.master.GetId())
 
@@ -210,7 +210,6 @@ func StartServer(hostname string, masterhost string) *Worker {
 			if conn, err := worker.l.Accept(); err == nil {
 				go rpcs.ServeConn(conn)
 			} else {
-				fmt.Printf("Worker(%s) accept: %v\n", hostname, err.Error())
 				worker.kill()
 			}
 		}

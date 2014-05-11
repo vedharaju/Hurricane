@@ -2,7 +2,7 @@ package master
 
 import "testing"
 import "strconv"
-import "fmt"
+import "client"
 import "client"
 
 func port(url string, port int) string {

@@ -4,6 +4,12 @@ import "net/rpc"
 import "fmt"
 import "time"
 
+func Debug(args ...interface{}) {
+	if false {
+		fmt.Println(args...)
+	}
+}
+
 const (
 	OK                = "OK"
 	RESET             = "RESET"
@@ -58,7 +64,7 @@ func CallRPC(srv string, rpcname string, args interface{}, reply interface{}) bo
 		return true
 	}
 
-	fmt.Println(err)
+	Debug(err)
 	return false
 }
 
@@ -173,7 +179,6 @@ func MakeWorkerClerk(hostname string) *WorkerClerk {
 }
 
 func (ck *WorkerClerk) ExecTask(args *ExecArgs, numRetries int) *ExecReply {
-	fmt.Println("executing", args, ck)
 	for i := 0; i < numRetries; i++ {
 		reply := ExecReply{}
 		ok := CallRPC(ck.hostname, "Worker.ExecTask", args, &reply)
@@ -185,7 +190,6 @@ func (ck *WorkerClerk) ExecTask(args *ExecArgs, numRetries int) *ExecReply {
 }
 
 func (ck *WorkerClerk) CopySegment(args *CopySegmentArgs, numRetries int) *CopySegmentReply {
-	fmt.Println("copying", args, ck)
 	for i := 0; i < numRetries; i++ {
 		reply := CopySegmentReply{}
 		ok := CallRPC(ck.hostname, "Worker.CopySegment", args, &reply)

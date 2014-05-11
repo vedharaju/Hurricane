@@ -3,7 +3,7 @@ package worker
 import "testing"
 import "reflect"
 import "bytes"
-import "fmt"
+import "client"
 import "strconv"
 
 func TestSerializeDeserialize(t *testing.T) {

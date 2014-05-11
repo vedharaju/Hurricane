@@ -10,7 +10,7 @@ import "encoding/gob"
 import "os"
 import "path"
 
-//import "fmt"
+//import "client"
 
 type LRU struct {
 	exists   map[int64]bool

@@ -1,7 +1,7 @@
 package worker
 
 import "testing"
-import "fmt"
+import "client"
 import "os"
 
 func TestLRU(t *testing.T) {
@@ -35,7 +35,7 @@ func TestLRU(t *testing.T) {
 	lru.Insert(1111, &segment2)
 	s := lru.Get(1234)
 	s2 := lru.Get(1111)
-	fmt.Println("Here's what I got", s)
-	fmt.Println(s2)
-	fmt.Println("Length", lru.Length())
+	client.Debug("Here's what I got", s)
+	client.Debug(s2)
+	client.Debug("Length", lru.Length())
 }

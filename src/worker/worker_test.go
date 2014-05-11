@@ -3,7 +3,7 @@ package worker
 import "testing"
 import "runtime"
 import "strconv"
-import "fmt"
+import "client"
 import "master"
 
 func port(url string, port int) string {
