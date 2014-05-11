@@ -1,2 +1,10 @@
 TOPMOD
-id=2
+id=1
+
+NEW_JOBS
+
+D: @/src/demo/aggregation/output2.udf ;; r=true & p=(0) & w=1 & b=1
+
+NEW_WORKFLOW
+
+1 -> D

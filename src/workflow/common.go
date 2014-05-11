@@ -17,6 +17,8 @@ const (
 	JOB      = "JOBS"
 	WORKFLOW = "WORKFLOW"
 	TOPMOD   = "TOPMOD"
+	NEW_JOB	= "NEW_JOBS"
+	NEW_WF	 = "NEW_WORKFLOW"
 	NONE     = "None"
 )
 
@@ -131,6 +133,8 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 
 	r_job, _ := regexp.Compile("JOBS.*")
 	r_workflow, _ := regexp.Compile("WORKFLOW.*")
+	r_new_job, _ := regexp.Compile("NEW_JOBS.*")
+	r_new_workflow, _ := regexp.Compile("NEW_WORKFLOW.*")
 	r_topmod, _ := regexp.Compile("TOPMOD.*")
 	r_jobChar, _ := regexp.Compile("\\s*:\\s*")
 	r_workflowChar, _ := regexp.Compile("\\s*->\\s*")
@@ -214,16 +218,78 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 				}
 			}
 		} else if mode == TOPMOD {
-			splits := strings.Split(line, "=")
-			if len(splits) == 2 {
-				key := strings.TrimSpace(splits[0])
-				value := strings.TrimSpace(splits[1])
-				if key == "id" {
-					id, err := strconv.Atoi(value)
-					if (err != nil) || (id < 0) {
-						return nil, errors.New("topmod: invalid id")
+			if r_new_job.MatchString(line) {
+				mode = NEW_JOB
+				jobs := workflow.GetProtojobs(hd)
+				for _, job := range jobs {
+					jobIds[strconv.FormatInt(int64(job.Id), 10)] = int64(job.Id)
+				}
+			} else {
+				splits := strings.Split(line, "=")
+				if len(splits) >= 2 {
+					key := strings.TrimSpace(splits[0])
+					value := strings.TrimSpace(splits[1])
+					if key == "id" {
+						id, err := strconv.Atoi(value)
+						if (err != nil) || (id < 0) {
+							return nil, errors.New("topmod: invalid id")
+						}
+						workflow = getWorkflow(hd, int64(id))
 					}
-					workflow = getWorkflow(hd, int64(id))
+				}
+/*				else {
+					return nil, errors.New("topmod: invalid id format")
+				}*/
+			}
+		} else if mode == NEW_JOB {
+			if r_new_workflow.MatchString(line) {
+				mode = NEW_WF
+			} else {
+				split := r_jobChar.Split(strings.TrimSpace(line), 2)
+				if len(split) >= 2 {
+					if _, ok := jobIds[split[0]]; !ok {
+						job := makeProtoJob(hd, workflow, split[1])
+						jobIds[split[0]] = int64(job.Id)
+					} else {
+						return nil, errors.New("jobs: Multiple jobs declared with the same name")
+					}
+
+				} else {
+					if len(split) != 1 || split[0] != "" {
+						return nil, errors.New("workflow: Invalid syntax in job declaration ")
+					}
+				}
+			}
+
+		} else if mode == NEW_WF {
+			split := r_workflowChar.Split(strings.TrimSpace(line), 2)
+
+			if len(split) >= 2 {
+				toId, ok := jobIds[split[1]]
+				if !ok {
+					return nil, errors.New("new jobs: Undefined job " + split[1])
+				}
+
+				from := r_comma.Split(strings.TrimSpace(split[0]), -1)
+				for index, fromJob := range from {
+					fromInfo := r_whitespace.Split(strings.TrimSpace(fromJob), 2)
+					fromId, ok := jobIds[strings.TrimSpace(fromInfo[0])]
+
+					var fromDelay int64
+					//var err error
+					if len(fromInfo) == 2 {
+						fromDelay, _ = strconv.ParseInt(fromInfo[1], 10, 0) //TODO: handle error
+					}
+
+					if ok {
+						makeWorkflowEdge(hd, fromId, toId, int(fromDelay), index)
+					} else {
+						return nil, errors.New("new jobs: Undefined job " + fromJob)
+					}
+				}
+			} else {
+				if len(split) != 1 || split[0] != "" {
+					return nil, errors.New("new workflow: Invalid syntax in job declaration ")
 				}
 			}
 		}
