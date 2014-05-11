@@ -1,10 +1,12 @@
 # Hurricane
 
-Hurricane was designed and implemented for MIT's 6.824 distributed systems class final project.  
+Hurricane was designed and implemented as part of MIT's 6.824 distributed systems class.  The system is highly inspired by storm at spark streaming. Hurricane is a language agnostic, realtime, distributed data processing system.  It was written and tested in Go.
 
-Hurricane is a language agnostic, realtime, distributed data processing system.  It was written and tested in Go.  More information can be found [here](TODO: INSERT LINK)
+Hurricane performs well.  We were able to process between 50k and 150k records per second per node on an AWS setup.
 
-Hurricane performs well.  We were able to process between 50k and 150k records per second per node on an AWS setup.  
+MIT 6.824 Distributed Systems [Final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
+
+[Performance Testing](https://www.youtube.com/watch?v=FmS21saPdkY) on AWS.
 
 ## Simple Getting started
 Hurricane processes data through user defined jobs.  These jobs can be written in any language as long as they can read from stdin and output to stdout.  Jobs should be precompiled as to reduce overhead during computation. Precompile user defined functions:
