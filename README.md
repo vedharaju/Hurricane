@@ -34,7 +34,7 @@ go run start_worker.go localhost:1235 localhost:1234
 ## Example: Wordcount
 Hurricane can be used to process data.  In this example, we will show how a simple [wordcount program](src/demo/wordcount_go) can be written.  Other examples such as grep exist.  [This](src/demo/huge) is an example which keeps a running sum of errors found in a kafka log over the past 30 seconds.
 
-### Define a workflow.
+### Define a workflow
 The heart of the system lies in the workflow.  A workflow is a directed graph of jobs to be run over the data.  Jobs can manipulate and change the data and pass them onto other jobs.  Each job will be run on a different worker as workers become available to process more data.  This is an example of a wordcount workflow.
 ```
 d=1000
