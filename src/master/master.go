@@ -528,7 +528,9 @@ func (m *Master) execTaskSuccess(segmentId int64, data interface{}) {
 	numComplete := rdd.GetNumSegmentsComplete(tx, segment)
 
 	if numComplete == pj.NumSegments {
-		fmt.Println("Job complete", rdd.Id, pj.Command)
+		batch := rdd.GetWorkflowBatch(tx)
+		workflow := batch.GetWorkflow(tx)
+		fmt.Println("Job complete", rdd.Id, pj.Command, time.Now().UnixNano()/1000000-batch.StartTime-workflow.Duration)
 		rdd.State = RDD_COMPLETE
 		saveOrPanic(tx, rdd)
 		m.tryLaunchingDependentJobs(tx, rdd, pj)
