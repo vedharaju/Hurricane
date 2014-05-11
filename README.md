@@ -33,7 +33,7 @@ go run start_worker.go localhost:1235 localhost:1234
 Hurricane can be used to process data.  In this example, we will show how a simple [wordcount program](src/demo/wordcount_go) can be written.  Other examples such as grep exist.  [This](src/demo/huge) is an example which keeps a running sum of errors found in a kafka log over the past 30 seconds.
 
 ### Define a workflow.
-Each job will be run on a different worker as workers become available.
+The heart of the system lies in the workflow.  A workflow is a directed graph of jobs to be run over the data.  Jobs can manipulate and change the data and pass them onto other jobs.  Each job will be run on a different worker as workers become available to process more data.  This is an example of a wordcount workflow.
 ```
 d=1000
 
@@ -51,6 +51,13 @@ B -> C
 C -> D
 
 ```
+
+There are 4 jobs in this linear workflow.  Together they read in a file, computer a MR wordcount over the data, and output to disk.
+
+ - input: Reads in a file and converts it to a hurricane RDD.
+ - map: Tokenize words into a key-value RDD.
+ - reduce: Group together key-value pairs into a new RDD.
+ - output: Write data to disk (could be a NFS).
 
 ### Write each job in the workflow as a UDF
 Each job in a workflow is a user defined function (UDF).  This is an example of the map job for a wordcount program written in Go.
