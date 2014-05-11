@@ -51,8 +51,16 @@ WORKFLOW
 A -> B
 B -> C
 C -> D
-
 ```
+The following is a description of the various job parameters:
+- The duration “d” of each batch is specified in milliseconds.
+- The reduce flag “r” determines how partitions are distributed among tasks.
+- The partition string “p” determines which tuple index is used to partition the job output.
+- The worker number “w” determines the parallelism of each job.
+- The bucket number “b” determines the number of partition buckets in each segment.
+- The copies number “c” determines the number of additional workers should replicate the output segment
+- The command line flags “\S” and “\D” specify the start and end times for reading log data from a Kafta broker
+
 
 There are 4 jobs in this linear workflow.  Together they read in a file, computer a MR wordcount over the data, and output to disk.
 
