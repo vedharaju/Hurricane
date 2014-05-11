@@ -90,8 +90,8 @@ func main() {
 ```
 The input tuples for each job are read from stdin.  Output tuples should be written to stdout.  This allows UDFs to be written in any language.  
 
-## Resources
-
-**Project proposal**: https://docs.google.com/document/d/1ts-cprYUZvTfWuIF8rb6NJJ7GF61RfSMyqOJ2612qOE
-
-**Design Doc**: https://docs.google.com/document/d/1SHegRAhPv6XI5L4o1y2YCabXwOlK133KVEsohwCfXUA
+## Additional Resources
+- [Project proposal](https://docs.google.com/document/d/1ts-cprYUZvTfWuIF8rb6NJJ7GF61RfSMyqOJ2612qOE)
+- [Initial design doc](https://docs.google.com/document/d/1SHegRAhPv6XI5L4o1y2YCabXwOlK133KVEsohwCfXUA)
+- [Final report](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys)
+- [Demo video](https://www.youtube.com/watch?v=FmS21saPdkY)
