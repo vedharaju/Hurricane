@@ -4,6 +4,8 @@ Hurricane is a distributed real time data processing system.  It allows for dist
 
 Hurricane runs with a single master node and multiple worker nodes. The system reads data from a persistent, streaming, log-file storage system such as Kafka. The master reads the log data in batches and then launches tasks on workers to process each batch and generate relevant RDDs. The master tracks and persists all RDDs and their dependencies. Fault tolerance is achieved in the same style as Spark.
 
+Workflows are defined on the master using a custom text-based syntax. Individual jobs are user-defined-functions (UDFs) that can be implemented in any language. Hurricane’s workflow semantics are more powerful than MapReduce, allowing for constructions such as windowed aggregation.
+
 Hurricane was built at past of MIT's 6.824 Distributed Systems class. See the [Final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
 
 ## Simple Getting started
