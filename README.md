@@ -1,12 +1,10 @@
 # Hurricane
 
-Hurricane was designed and implemented as part of MIT's 6.824 distributed systems class.  The system is highly inspired by storm at spark streaming. Hurricane is a language agnostic, realtime, distributed data processing system.  It was written and tested in Go.
+Hurricane is a distributed real time data processing system.  It allows for distributed in-memory computation while retaining the fault tolerance of data ﬂow models like MapReduce.  At a high level, Hurricane performs chained MapReduce jobs in small batches at a high frequency (about once per second).  Intermediate results are stored in read-only Resilient Distributed Datasets (RDDs), sharded across multiple worker nodes. Although the implementation is unoptimized, Hurricane achieves throughput of 50k records/second/node.
 
-Hurricane performs well.  We were able to process between 50k and 150k records per second per node on an AWS setup.
+Hurricane runs with a single master node and multiple worker nodes. The system reads data from a persistent, streaming, log-file storage system such as Kafka. The master reads the log data in batches and then launches tasks on workers to process each batch and generate relevant RDDs. The master tracks and persists all RDDs and their dependencies. Fault tolerance is achieved in the same style as Spark.
 
-MIT 6.824 Distributed Systems [Final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
-
-[Performance Testing](https://www.youtube.com/watch?v=FmS21saPdkY) on AWS.
+Hurricane was built at past of MIT's 6.824 Distributed Systems class. See the [Final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
 
 ## Simple Getting started
 Hurricane processes data through user defined jobs.  These jobs can be written in any language as long as they can read from stdin and output to stdout.  Jobs should be precompiled as to reduce overhead during computation. Precompile user defined functions:
