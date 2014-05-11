@@ -701,7 +701,7 @@ func (m *Master) tick() {
 			m.queueEvent(e)
 		}
 	} else {
-		client.Debug("EVENT QUEUE IS ALMOST FULL!! SOMETHING IS WRONG!!")
+		fmt.Println("EVENT QUEUE IS ALMOST FULL!! SOMETHING IS WRONG!!")
 	}
 
 	commitOrPanic(tx)
