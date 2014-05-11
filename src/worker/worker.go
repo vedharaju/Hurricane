@@ -9,6 +9,7 @@ import "log"
 import "strings"
 import "time"
 import "fmt"
+import "runtime"
 
 type Worker struct {
 	mu     sync.Mutex
@@ -171,6 +172,8 @@ func StartServer(hostname string, masterhost string) *Worker {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	// gob.Register()
+
+	runtime.GOMAXPROCS(7)
 
 	gopath := os.Getenv("GOPATH")
 	if _, err := os.Stat(gopath + "/src/segments"); err != nil {
