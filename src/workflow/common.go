@@ -16,6 +16,7 @@ import (
 const (
 	JOB      = "JOBS"
 	WORKFLOW = "WORKFLOW"
+	TOPMOD   = "TOPMOD"
 	NONE     = "None"
 )
 
@@ -96,6 +97,17 @@ func makeProtoJob(hd *hood.Hood, workflow *master.Workflow, command string) *mas
 	return &job
 }
 
+func getWorkflow(hd *hood.Hood, id int64) *master.Workflow {
+	wfs := master.GetWorkflows(hd)
+	for _, wf := range wfs {
+		if int64(wf.Id) == id {
+			return wf
+		}
+	}
+
+	return nil
+}
+
 func makeWorkflow(hd *hood.Hood) *master.Workflow {
 	workflow := master.Workflow{}
 	saveOrPanic(hd, &workflow)
@@ -119,6 +131,7 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 
 	r_job, _ := regexp.Compile("JOBS.*")
 	r_workflow, _ := regexp.Compile("WORKFLOW.*")
+	r_topmod, _ := regexp.Compile("TOPMOD.*")
 	r_jobChar, _ := regexp.Compile("\\s*:\\s*")
 	r_workflowChar, _ := regexp.Compile("\\s*->\\s*")
 	r_comma, _ := regexp.Compile("\\s*,\\s*")
@@ -134,6 +147,8 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 			if r_job.MatchString(line) {
 				mode = JOB
 				saveOrPanic(hd, workflow)
+			} else if r_topmod.MatchString(line) {
+				mode = TOPMOD
 			} else {
 				splits := strings.Split(line, "=")
 				if len(splits) == 2 {
@@ -196,6 +211,19 @@ func ReadWorkflow(hd *hood.Hood, inputReader io.Reader) (*master.Workflow, error
 			} else {
 				if len(split) != 1 || split[0] != "" {
 					return nil, errors.New("workflow: Invalid syntax in job declaration ")
+				}
+			}
+		} else if mode == TOPMOD {
+			splits := strings.Split(line, "=")
+			if len(splits) == 2 {
+				key := strings.TrimSpace(splits[0])
+				value := strings.TrimSpace(splits[1])
+				if key == "id" {
+					id, err := strconv.Atoi(value)
+					if (err != nil) || (id < 0) {
+						return nil, errors.New("topmod: invalid id")
+					}
+					workflow = getWorkflow(hd, int64(id))
 				}
 			}
 		}
