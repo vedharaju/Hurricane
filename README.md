@@ -6,7 +6,7 @@ Hurricane runs with a single master node and multiple worker nodes. The system r
 
 Workflows are defined on the master using a custom text-based syntax. Individual jobs are user-defined-functions (UDFs) that can be implemented in any language. Hurricane’s workflow semantics are more powerful than MapReduce, allowing for constructions such as windowed aggregation.
 
-Hurricane was built at past of MIT's 6.824 Distributed Systems class. See the [Final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
+Hurricane was built at past of MIT's 6.824 Distributed Systems class. See the [final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
 
 ## Simple Getting started
 Hurricane processes data through user defined jobs.  These jobs can be written in any language as long as they can read from stdin and output to stdout.  Jobs should be precompiled as to reduce overhead during computation. Precompile user defined functions:
