@@ -2,9 +2,11 @@
 
 Hurricane is a distributed real time data processing system.  It allows for distributed in-memory computation while retaining the fault tolerance of data ﬂow models like MapReduce.  At a high level, Hurricane performs chained MapReduce jobs in small batches at a high frequency (about once per second).  Intermediate results are stored in read-only Resilient Distributed Datasets (RDDs), sharded across multiple worker nodes. Although the implementation is unoptimized, Hurricane achieves throughput of 50k records/second/node.
 
-Hurricane runs with a single master node and multiple worker nodes. The system reads data from a persistent, streaming, log-file storage system such as Kafka. The master reads the log data in batches and then launches tasks on workers to process each batch and generate relevant RDDs. The master tracks and persists all RDDs and their dependencies. Fault tolerance is achieved in the same style as Spark.
+Hurricane runs with a single master node and multiple worker nodes. The system reads data from a persistent, streaming, log-file storage system such as Kafka. The master reads the log data in batches and then launches tasks on workers to process each batch and generate relevant RDDs. The master tracks and persists all RDDs and their dependencies.
 
-Workflows are defined on the master using a custom text-based syntax. Individual jobs are user-defined-functions (UDFs) that can be implemented in any language. Hurricane’s workflow semantics are more powerful than MapReduce, allowing for constructions such as windowed aggregation.
+Hurricane is able to survive faults on master and worker nodes. Fault-tolerance on the master is achieved by persisting state to disk so that it may resume after coming back online. Fault-tolerance on worker nodes is achieved by reconstructing RDDs from their sources. RDDs may be replicated across several workers to speed up the recovery.
+
+Workflows are defined on the master using a custom text-based syntax. Individual jobs are user-defined-functions (UDFs) that can be implemented in any language. Hurricane’s workflow semantics are more powerful than MapReduce, allowing for constructions such as efficient windowed aggregation.
 
 Hurricane was built at past of MIT's 6.824 Distributed Systems class. See the [final paper](https://docs.google.com/document/d/1o87DJr37dUiRn70ZPrEBgGqeSDmkD8M4MLA63Qj2uys).
 
